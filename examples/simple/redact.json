@@ -1,0 +1,24 @@
+{
+  "columns": {
+    "include": [
+      {
+        "name": "id",
+        "references": "id",
+        "type": "int"
+      },
+      {
+        "name": "title",
+        "type": "string"
+      }
+    ],
+    "skip": [],
+    "aggregate": [
+      {
+        "name": "count IDs",
+        "function": "count",
+        "references": "id"
+      }
+    ]
+  },
+  "settings": {}
+}
