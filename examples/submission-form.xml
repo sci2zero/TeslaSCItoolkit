@@ -3,28 +3,19 @@
         <name>id</name>
         <label>Submission ID</label>
         <type>int</type>
-        <state>present</state>
     </col>
     <col>
         <name>title</name>
         <label>Submission Title</label>
         <type>string</type>
-        <state>present</state>
-    </col>
-    <col>
-        <name>email</name>
-        <label>Email</label>
-        <type>string</type>
-        <state>drop</state>
     </col>
     <col>
         <name>num of emails</name>
         <label>Number of emails</label>
         <type>number</type>
-        <state>present</state>
         <aggregate>
             <function>count</function>
-            <column>email</column>
+            <ref>email</ref>
         </aggregate>
         <required>true</required>
     </col>
