@@ -3,12 +3,10 @@
     "include": [
       {
         "name": "id",
-        "references": "id",
-        "type": "int"
+        "references": "id"
       },
       {
-        "name": "title",
-        "type": "string"
+        "name": "title"
       }
     ],
     "skip": [],
