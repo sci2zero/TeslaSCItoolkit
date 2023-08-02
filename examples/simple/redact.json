@@ -2,19 +2,20 @@
   "columns": {
     "include": [
       {
-        "name": "id",
-        "references": "id"
-      },
-      {
-        "name": "title"
+        "id": {
+          "refs": "id"
+        },
+        "title": {}
       }
     ],
     "skip": [],
     "aggregate": [
       {
-        "name": "count IDs",
-        "function": "count",
-        "references": "id"
+        "count_IDS": {
+          "description": "count IDs",
+          "fn": "count",
+          "group": ["id", "title"]
+        }
       }
     ]
   },
