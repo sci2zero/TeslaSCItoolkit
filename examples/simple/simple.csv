@@ -1,0 +1,6 @@
+id,name,email,phone-number,age,salary
+1,John Doe,john@mail.com,1234567890,33,100000
+2,Jane Doe,jane@mail.com,0987654321,44,200000
+3,John Smith,smith@mail.com,1234509876,55,300000
+4,Jane Williams,jwilliams@mail.com,1234509876,31,98000
+5,Jack Miller,,1234509876,33,79000
