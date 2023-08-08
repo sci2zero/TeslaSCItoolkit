@@ -1,0 +1,20 @@
+[project]
+name = "exporter"
+version = "0.0.1"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "requests",
+    'importlib-metadata; python_version<"3.8"',
+]
+
+[project.scripts]
+exporter = "exporter.scripts.exporter:cli"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+
+[tool.setuptools.packages]
+find = {}  # Scan the project directory with the default parameters
