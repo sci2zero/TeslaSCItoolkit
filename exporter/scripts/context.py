@@ -23,6 +23,7 @@ class CSV(object):
             if self.debug:
                 print(f"An error occurred: {str(e)}")
             return None
+    
         
 class Exporter(object):
     pass
@@ -36,8 +37,8 @@ class Aggregate(object):
 class Config(object):
     
     def __init__(self) -> None:
-        self.config_path = Path(CONFIG_HOME)
-        self._read_config()
+        self.config_path = Path.cwd() / Path(CONFIG_HOME) / "config.yml"
+        self.content = self._read_config() or {}
 
 
     def _create_config(self):
@@ -50,7 +51,15 @@ class Config(object):
                 return yaml.safe_load(yaml_file)
         except FileNotFoundError:
             print(f"File '{self.yaml_file_path}' not found.")
-            return None
+            raise
         except yaml.YAMLError as e:
             print(f"Error while loading YAML file: {e}")
-            return None
+            raise
+    
+    @classmethod
+    def init(cls, dataset: str) -> None:
+        """Stores the dataset name in the config file."""
+        config = cls()
+        config.content.setdefault("data", dataset)
+        with open(config.config_path, 'w') as yaml_file:
+            yaml.dump(config.content, yaml_file, default_flow_style=False)
