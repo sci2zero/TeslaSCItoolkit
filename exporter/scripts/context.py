@@ -6,25 +6,55 @@ from pathlib import Path
  
 CONFIG_HOME = ".exporter"
 
-class CSV(object):
-    def __init__(self, home: str = None, debug: bool = False) -> None:
-        self.path = Path(home)
+class Data(object):
+    """Base class for data sources."""
+
+    def __init__(self, path: str) -> None:
+        self.path = Path.cwd() / Path(CONFIG_HOME) / Path(path)
          # Check if the file exists
         if not self.path.exists():
             raise FileNotFoundError(f"File '{self.path}' not found.")
 
-        self.debug = debug
-        self.df = self._open()
+    def load(self):
+        pass
+    
+    @property
+    def get(self):
+        pass
 
-    def _open(self):
+class CSV(Data):
+
+    def __init__(self, path: str = None) -> None:
+        super().__init__(path)
+
+        self.df = self.load()
+    
+    def load(self):
         try:
             return pd.read_csv(self.path)
         except Exception as e:
-            if self.debug:
-                print(f"An error occurred: {str(e)}")
-            return None
-    
-        
+            raise e
+
+class DataSource(object):
+
+    def __init__(self) -> None:
+        self.config = Config()
+        self.source = self.load()
+
+    @classmethod
+    def get(cls):
+        return cls()
+
+    def load(self) -> Data:
+        """Loads the data source."""
+        source_path = self.config.content.get("data", None)
+        if not source_path:
+            raise ValueError("No data source found in the config file.")
+        # TODO: auto-determine the data source type
+        return CSV(source_path).load()
+
+
+
 class Exporter(object):
     pass
 
@@ -38,7 +68,7 @@ class Config(object):
     
     def __init__(self) -> None:
         self.config_path = Path.cwd() / Path(CONFIG_HOME) / "config.yml"
-        self.content = self._read_config() or {}
+        self._content = self._read_config() or {}
 
 
     def _create_config(self):
@@ -63,3 +93,10 @@ class Config(object):
         config.content.setdefault("data", dataset)
         with open(config.config_path, 'w') as yaml_file:
             yaml.dump(config.content, yaml_file, default_flow_style=False)
+    
+    @property
+    def content(self):
+        if not self._content:
+            self._content = self._read_config()
+        return self._content
+

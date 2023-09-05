@@ -1,9 +1,13 @@
 import click
 
+from exporter.scripts.context import DataSource
 
 
 @click.command()
-def include(csv):
+@click.option("--cols", default=None, help="Columns to include in the export.")
+def include(cols):
     """Example include."""
     breakpoint()
-    click.echo('Hello World!')
+    data = DataSource.get()
+    print(data.source)
+    click.echo('Included World!')
