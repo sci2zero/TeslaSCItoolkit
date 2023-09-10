@@ -1,42 +1,46 @@
-import pandas as pd
+import csv
 import yaml
 
 from pathlib import Path
 
- 
+# TODO: move over to separate .py
+
 CONFIG_HOME = ".exporter"
+
 
 class Data(object):
     """Base class for data sources."""
 
     def __init__(self, path: str) -> None:
         self.path = Path.cwd() / Path(CONFIG_HOME) / Path(path)
-         # Check if the file exists
+        # Check if the file exists
         if not self.path.exists():
             raise FileNotFoundError(f"File '{self.path}' not found.")
 
     def load(self):
         pass
-    
+
     @property
     def get(self):
         pass
 
-class CSV(Data):
 
+class CSV(Data):
     def __init__(self, path: str = None) -> None:
         super().__init__(path)
 
         self.df = self.load()
-    
+
     def load(self):
         try:
-            return pd.read_csv(self.path)
+            csv_file = open(self.path, "r")
+            csv_reader = csv.DictReader(csv_file)
+            return csv_reader
         except Exception as e:
             raise e
 
-class DataSource(object):
 
+class DataSource(object):
     def __init__(self) -> None:
         self.config = Config()
         self.source = self.load()
@@ -54,22 +58,22 @@ class DataSource(object):
         return CSV(source_path).load()
 
 
-
 class Exporter(object):
     pass
+
 
 class Include(object):
     pass
 
+
 class Aggregate(object):
     pass
 
+
 class Config(object):
-    
     def __init__(self) -> None:
         self.config_path = Path.cwd() / Path(CONFIG_HOME) / "config.yml"
         self._content = self._read_config() or {}
-
 
     def _create_config(self):
         pass
@@ -77,7 +81,7 @@ class Config(object):
     def _read_config(self):
         try:
             # Open and load the YAML file
-            with open(self.config_path, 'r') as yaml_file:
+            with open(self.config_path, "r") as yaml_file:
                 return yaml.safe_load(yaml_file)
         except FileNotFoundError:
             print(f"File '{self.yaml_file_path}' not found.")
@@ -85,18 +89,21 @@ class Config(object):
         except yaml.YAMLError as e:
             print(f"Error while loading YAML file: {e}")
             raise
-    
+
     @classmethod
     def init(cls, dataset: str) -> None:
         """Stores the dataset name in the config file."""
         config = cls()
         config.content.setdefault("data", dataset)
-        with open(config.config_path, 'w') as yaml_file:
+        with open(config.config_path, "w") as yaml_file:
             yaml.dump(config.content, yaml_file, default_flow_style=False)
-    
+
     @property
     def content(self):
         if not self._content:
             self._content = self._read_config()
         return self._content
 
+    def write(self):
+        with open(self.config_path, "w") as yaml_file:
+            yaml.dump(self.content, yaml_file, default_flow_style=False)
