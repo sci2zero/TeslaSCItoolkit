@@ -32,18 +32,16 @@ class CSV(Data):
         self.df = self.load()
 
     def load(self):
-        try:
-            csv_file = open(self.path, "r")
-            csv_reader = csv.DictReader(csv_file)
-            return csv_reader
-        except Exception as e:
-            raise e
+        csv_file = open(self.path, "r")
+        csv_reader = csv.DictReader(csv_file)
+        return csv_reader
 
 
 class DataSource(object):
     def __init__(self) -> None:
         self.config = Config()
         self.source = self.load()
+        self._loaded = None
 
     @classmethod
     def get(cls):
@@ -55,7 +53,9 @@ class DataSource(object):
         if not source_path:
             raise ValueError("No data source found in the config file.")
         # TODO: auto-determine the data source type
-        return CSV(source_path).load()
+        csv = CSV(source_path)
+        self._loaded = list(csv.load())
+        return csv
 
 
 class Exporter(object):
