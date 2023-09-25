@@ -1,10 +1,12 @@
 import click
 
-from exporter.scripts.context import Config
+from exporter.scripts.context import Config as config
+
 
 @click.command()
 @click.option("-d", "--dataset", type=click.STRING, help="Dataset to export")
-def start(dataset):
+@click.option("-o", "--output-dest", type=click.STRING, help="Output dataset name")
+def start(dataset, output_dest):
     """Initializes the dataset."""
-    Config.init(dataset)
-    click.echo('Initialized the dataset')
+    config.init(dataset, output_dest)
+    click.echo("Initialized the dataset")

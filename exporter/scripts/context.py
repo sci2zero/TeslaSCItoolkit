@@ -91,10 +91,15 @@ class Config(object):
             raise
 
     @classmethod
-    def init(cls, dataset: str) -> None:
+    def init(cls, dataset: str, dest: str) -> None:
         """Stores the dataset name in the config file."""
         config = cls()
-        config.content.setdefault("data", dataset)
+
+        if config.content.get("data", None) is None:
+            config.content.setdefault("data", {"src": dataset, "dest": dest})
+        else:
+            config.content["data"]["src"] = dataset
+            config.content["data"]["dest"] = dest
         with open(config.config_path, "w") as yaml_file:
             yaml.safe_dump(config.content, yaml_file, default_flow_style=False)
 
