@@ -1,6 +1,6 @@
 import csv
 import yaml
-
+import pandas as pd
 from pathlib import Path
 
 # TODO: move over to separate .py
@@ -33,7 +33,8 @@ class CSV(Data):
 
     def load(self):
         csv_file = open(self.path, "r")
-        csv_reader = csv.DictReader(csv_file)
+        csv_reader = pd.read_csv(csv_file)
+        # csv_reader = csv.DictReader(csv_file)
         return csv_reader
 
 

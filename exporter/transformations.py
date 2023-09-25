@@ -1,5 +1,5 @@
 import logging
-
+import pandas as pd
 
 from exporter.scripts.context import DataSource, Config
 
@@ -35,10 +35,10 @@ def include(columns: list[str]) -> None:
 
 def validate_columns(data: DataSource, columns: list[str]) -> None:
     """Validates that the columns exist in the dataset."""
-    entry = list(data.source.load())[0]
+    df_columns = data.source.load().columns.tolist()
 
     for column in columns:
-        if column not in entry:
+        if column not in df_columns:
             logging.error("Column '%s' does not exist in the dataset.", column)
             raise ValueError(f"Column '{column}' does not exist in the dataset.")
 
@@ -50,8 +50,9 @@ def add_columns(columns: list[str]) -> None:
     config.write()
 
 
-def preview_dataset(data, columns):
+def preview_dataset(data: DataSource, columns: list[str]) -> None:
     """Prints the first 10 rows of the dataset."""
     print("Preview of the dataset:")
-    for row in list(data.source.load())[0:10]:
-        print({column: row[column] for column in columns})
+
+    df = data.source.load()
+    print(df[columns].head(10))
