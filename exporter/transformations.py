@@ -13,9 +13,12 @@ def aggregate(type: str, group: list[str], alias: str) -> None:
     config = Config()
     validate_columns(data, [group])
 
+    if "aggregate" not in config.content:
+        config.content["aggregate"] = []
+
     config.content["aggregate"].append(
         {
-            type: type,
+            "type": type,
             "grouped": group,
             "alias": alias if alias else f"{type}_{group[0]}",
         }
@@ -34,9 +37,12 @@ def preview() -> None:
 
     columns = config.content["include"]
     validate_columns(data, columns)
-
     logging.info("Included columns: %s", columns)
-    preview_dataset(data, columns)
+
+    aggregations = config.content["aggregate"]
+    logging.info("Aggregations to apply: %s", aggregations)
+
+    preview_dataset(data, columns, aggregations)
 
 
 def include(columns: list[str]) -> None:
@@ -65,9 +71,46 @@ def add_columns(columns: list[str]) -> None:
     config.write()
 
 
-def preview_dataset(data: DataSource, columns: list[str]) -> None:
+def preview_dataset(
+    data: DataSource, columns: list[str], aggregations: list[dict[str]]
+) -> None:
     """Prints the first 10 rows of the dataset."""
     print("Preview of the dataset:")
 
     df = data.source.load()
-    print(df[columns].head(10))
+    df = df[columns]
+
+    breakpoint()
+    for aggregation in aggregations:
+        match aggregation["type"]:
+            case "count":
+                unmerged = (
+                    df.groupby(aggregation["grouped"])
+                    .size()
+                    .reset_index(name=aggregation["alias"])
+                )
+            case "distinct":
+                # TODO: fix this
+                pass
+            case "max":
+                # TODO: fix this
+                pass
+            case "min":
+                # TODO: fix this
+                pass
+            case "sum":
+                # TODO: fix this
+                pass
+            case "avg":
+                # TODO: fix this
+                pass
+            case _:
+                raise ValueError(f"Invalid aggregation type: {aggregation['type']}")
+
+        df = df.merge(unmerged, on=aggregation["grouped"])
+
+    print(df.head(10))
+
+
+def apply() -> None:
+    pass
