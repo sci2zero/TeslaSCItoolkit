@@ -1,4 +1,3 @@
-import csv
 import yaml
 import pandas as pd
 from pathlib import Path
@@ -97,7 +96,7 @@ class Config(object):
         config = cls()
         config.content.setdefault("data", dataset)
         with open(config.config_path, "w") as yaml_file:
-            yaml.dump(config.content, yaml_file, default_flow_style=False)
+            yaml.safe_dump(config.content, yaml_file, default_flow_style=False)
 
     @property
     def content(self):
@@ -107,4 +106,4 @@ class Config(object):
 
     def write(self):
         with open(self.config_path, "w") as yaml_file:
-            yaml.dump(self.content, yaml_file, default_flow_style=False)
+            yaml.safe_dump(self.content, yaml_file, default_flow_style=False)

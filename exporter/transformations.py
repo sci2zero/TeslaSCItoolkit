@@ -8,6 +8,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
+def aggregate(type: str, group: list[str], alias: str) -> None:
+    data = DataSource.get()
+    config = Config()
+    validate_columns(data, [group])
+
+    config.content["aggregate"].append(
+        {
+            type: type,
+            "grouped": group,
+            "alias": alias if alias else f"{type}_{group[0]}",
+        }
+    )
+    config.write()
+
+
 def preview() -> None:
     """Preview the changes that will be applied to the dataset"""
     data = DataSource.get()
