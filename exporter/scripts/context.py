@@ -19,6 +19,9 @@ class Data(object):
     def load(self):
         pass
 
+    def save(self):
+        pass
+
     @property
     def get(self):
         pass
@@ -33,7 +36,6 @@ class CSV(Data):
     def load(self):
         csv_file = open(self.path, "r")
         csv_reader = pd.read_csv(csv_file)
-        # csv_reader = csv.DictReader(csv_file)
         return csv_reader
 
 
@@ -49,7 +51,7 @@ class DataSource(object):
 
     def load(self) -> Data:
         """Loads the data source."""
-        source_path = self.config.content.get("data", None)
+        source_path = self.config.content.get("data", None).get("src", None)
         if not source_path:
             raise ValueError("No data source found in the config file.")
         # TODO: auto-determine the data source type
@@ -57,17 +59,19 @@ class DataSource(object):
         self._loaded = list(csv.load())
         return csv
 
+    @classmethod
+    def save(cls, df, config) -> None:
+        """Saves the data source."""
+        dest_name = config.content.get("data", None).get("dest", None)
+        dest_path = Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
 
-class Exporter(object):
-    pass
-
-
-class Include(object):
-    pass
-
-
-class Aggregate(object):
-    pass
+        if not dest_path:
+            raise ValueError("No data destination found in the config file.")
+        try:
+            df.to_csv(dest_path, index=False)
+        except Exception as e:
+            print(f"Error while saving the data source: {e}")
+            raise
 
 
 class Config(object):

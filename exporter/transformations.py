@@ -1,6 +1,6 @@
 import logging
-import pandas as pd
 
+from typing import Any
 from exporter.scripts.context import DataSource, Config
 
 logging.basicConfig(level=logging.INFO)
@@ -26,13 +26,14 @@ def aggregate(type: str, group: list[str], alias: str) -> None:
     config.write()
 
 
-def preview() -> None:
+def preview() -> Any:
     """Preview the changes that will be applied to the dataset"""
     data = DataSource.get()
     config = Config()
 
     if "include" not in config.content:
         logging.info("No columns to include in the dataset.")
+        # TODO: what about aggregate columns existing?
         return
 
     columns = config.content["include"]
@@ -42,7 +43,7 @@ def preview() -> None:
     aggregations = config.content["aggregate"]
     logging.info("Aggregations to apply: %s", aggregations)
 
-    preview_dataset(data, columns, aggregations)
+    preview_dataset(data, config)
 
 
 def include(columns: list[str]) -> None:
@@ -71,16 +72,17 @@ def add_columns(columns: list[str]) -> None:
     config.write()
 
 
-def preview_dataset(
-    data: DataSource, columns: list[str], aggregations: list[dict[str]]
-) -> None:
+def preview_dataset(data: DataSource, config: Config) -> None:
     """Prints the first 10 rows of the dataset."""
+
+    columns = config.content["include"]
+    aggregations = config.content["aggregate"]
+
     print("Preview of the dataset:")
 
     df = data.source.load()
     df = df[columns]
 
-    breakpoint()
     for aggregation in aggregations:
         match aggregation["type"]:
             case "count":
@@ -110,7 +112,13 @@ def preview_dataset(
         df = df.merge(unmerged, on=aggregation["grouped"])
 
     print(df.head(10))
+    return df
 
 
 def apply() -> None:
-    pass
+    data = DataSource.get()
+    config = Config()
+
+    df = preview_dataset(data, config)
+
+    DataSource.save(df, config)

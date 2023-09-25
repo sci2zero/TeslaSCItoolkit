@@ -1,5 +1,11 @@
-data: simple.csv
+aggregate:
+  - alias: count_salary
+    grouped: salary
+    type: count
+data:
+  dest: exported.csv
+  src: simple.csv
 include:
-- id
-- name
-- salary
+  - id
+  - name
+  - salary
