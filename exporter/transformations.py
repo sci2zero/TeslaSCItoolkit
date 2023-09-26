@@ -47,7 +47,9 @@ def preview() -> Any:
     aggregations = config.content["aggregate"]
     logging.info("Aggregations to apply: %s", aggregations)
 
-    preview_dataset(data, config)
+    print("Preview of the dataset:")
+    df = preview_dataset(data, config)
+    print(df.head(10))
 
 
 def include(columns: list[str]) -> None:
@@ -82,14 +84,10 @@ def preview_dataset(data: DataSource, config: Config) -> None:
     columns = config.content["include"]
     aggregations = config.content["aggregate"]
 
-    print("Preview of the dataset:")
-
     df = data.source.load()
     df = df[columns]
 
     df = _apply_aggregations(df, aggregations)
-
-    print(df.head(10))
 
     return df
 
