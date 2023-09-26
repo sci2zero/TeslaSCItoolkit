@@ -8,7 +8,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-def aggregate(type: str, group: list[str], alias: str) -> None:
+def aggregate(
+    function: str, column: str | None, group: list[str] | None, alias: str | None
+) -> None:
     data = DataSource.get()
     config = Config()
     validate_columns(data, [group])
@@ -18,9 +20,10 @@ def aggregate(type: str, group: list[str], alias: str) -> None:
 
     config.content["aggregate"].append(
         {
-            "type": type,
+            "function": function,
+            "column": column if column else group[0],
             "grouped": group,
-            "alias": alias if alias else f"{type}_{group[0]}",
+            "alias": alias if alias else f"{function}_{group[0]}",
         }
     )
     config.write()
