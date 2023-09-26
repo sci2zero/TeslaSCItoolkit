@@ -1,4 +1,5 @@
 import logging
+import pandas as pd
 
 from typing import Any
 from exporter.scripts.context import DataSource, Config
@@ -86,8 +87,19 @@ def preview_dataset(data: DataSource, config: Config) -> None:
     df = data.source.load()
     df = df[columns]
 
+    df = _apply_aggregations(df, aggregations)
+
+    print(df.head(10))
+
+    return df
+
+
+def _apply_aggregations(
+    df: pd.DataFrame, aggregations: list[dict[str, str]]
+) -> pd.DataFrame:
+    """Applies the aggregations to the dataframe."""
     for aggregation in aggregations:
-        match aggregation["type"]:
+        match aggregation["function"]:
             case "count":
                 unmerged = (
                     df.groupby(aggregation["grouped"])
@@ -95,26 +107,34 @@ def preview_dataset(data: DataSource, config: Config) -> None:
                     .reset_index(name=aggregation["alias"])
                 )
             case "distinct":
-                # TODO: fix this
-                pass
-            case "max":
-                # TODO: fix this
-                pass
-            case "min":
-                # TODO: fix this
+                # FIXME: this is not working
                 pass
             case "sum":
-                # TODO: fix this
-                pass
+                unmerged = (
+                    df.groupby(aggregation["grouped"])[aggregation["column"]]
+                    .sum()
+                    .reset_index(name=aggregation["alias"])
+                )
             case "avg":
-                # TODO: fix this
-                pass
-            case _:
-                raise ValueError(f"Invalid aggregation type: {aggregation['type']}")
-
+                unmerged = (
+                    df.groupby(aggregation["grouped"])[aggregation["column"]]
+                    .mean()
+                    .reset_index(name=aggregation["alias"])
+                )
+            case "max":
+                unmerged = (
+                    df.groupby(aggregation["grouped"])[aggregation["column"]]
+                    .max()
+                    .reset_index(name=aggregation["alias"])
+                )
+            case "min":
+                unmerged = (
+                    df.groupby(aggregation["grouped"])[aggregation["column"]]
+                    .min()
+                    .reset_index(name=aggregation["alias"])
+                )
         df = df.merge(unmerged, on=aggregation["grouped"])
 
-    print(df.head(10))
     return df
 
 
