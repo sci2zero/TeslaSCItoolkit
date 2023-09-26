@@ -1,7 +1,7 @@
 on: [push]
 
 jobs:
-  tests:
+  run-exporter:
     runs-on: ubuntu-latest
 
     strategy:
