@@ -14,7 +14,7 @@ def aggregate(
 ) -> None:
     data = DataSource.get()
     config = Config()
-    validate_columns(data, [group])
+    validate_columns(data, group)
 
     if "aggregate" not in config.content:
         config.content["aggregate"] = []
