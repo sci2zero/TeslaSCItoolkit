@@ -1,0 +1,18 @@
+aggregate:
+- alias: count_hours-per-week_education_income
+  columns: 
+    - hours-per-week
+    - education
+    - income
+  function: count
+  grouped:
+  - hours-per-week
+  - education
+  - income
+include:
+  - hours-per-week
+  - education
+  - income
+data:
+  dest: exported-adult.csv
+  src: adult.csv
