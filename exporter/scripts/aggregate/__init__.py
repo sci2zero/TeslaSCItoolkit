@@ -22,5 +22,16 @@ def aggregate(function, column, group, alias):
     """Run an aggregate function as it's typically understood by SQL semantics.
     Currently supported functions are: count, distinct, max, min, sum, avg
     """
-    print(function, column, group, alias)
-    transformations.aggregate(function, column, group.split(","), alias)
+    message = f"Successfully ran function {function.upper()}"
+    if not group and not column:
+        raise click.UsageError("You must specify either a column or a group.")
+    if group is not None:
+        message += f" grouped by {group}"
+        group = group.split(",")
+    if not column and group is not None:
+        column = group[0] if isinstance(group, list) else group
+
+    message += f" on column {column}"
+
+    transformations.aggregate(function, column, group, alias)
+    click.echo(message)

@@ -1,8 +1,10 @@
 import logging
 import pandas as pd
+import attrs
 
 from typing import Any
 from exporter.scripts.context import DataSource, Config
+from exporter.types import Aggregate
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,19 +16,19 @@ def aggregate(
 ) -> None:
     data = DataSource.get()
     config = Config()
-    validate_columns(data, group)
+
+    if group is not None:
+        validate_columns(data, group)
 
     if "aggregate" not in config.content:
         config.content["aggregate"] = []
 
-    config.content["aggregate"].append(
-        {
-            "function": function,
-            "column": column if column else group[0],
-            "grouped": group,
-            "alias": alias if alias else f"{function}_{group[0]}",
-        }
-    )
+    aggregate_dict = attrs.asdict(Aggregate(function, column, alias))
+
+    if group is not None:
+        aggregate_dict["grouped"] = group
+
+    config.content["aggregate"].append(aggregate_dict)
     config.write()
 
 
