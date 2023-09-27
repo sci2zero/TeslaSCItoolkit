@@ -1,10 +1,13 @@
-import yaml
-import pandas as pd
+import os
 from pathlib import Path
+
+import pandas as pd
+import yaml
 
 # TODO: move over to separate .py
 
 CONFIG_HOME = ".exporter"
+CONFIG_NAME = os.environ.get("EXPORTER_CONFIG_NAME") or "config.yml"
 
 
 class Data(object):
@@ -76,7 +79,7 @@ class DataSource(object):
 
 class Config(object):
     def __init__(self) -> None:
-        self.config_path = Path.cwd() / Path(CONFIG_HOME) / "config.yml"
+        self.config_path = Path.cwd() / Path(CONFIG_HOME) / CONFIG_NAME
         self._content = self._read_config() or {}
 
     def _create_config(self):
