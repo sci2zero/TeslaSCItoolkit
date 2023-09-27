@@ -99,40 +99,25 @@ def _apply_aggregations(
 ) -> pd.DataFrame:
     """Applies the aggregations to the dataframe."""
     for aggregation in aggregations:
+        df_groupby = df.groupby(aggregation["grouped"])[aggregation["column"]]
+
         match aggregation["function"]:
             case "count":
-                unmerged = (
-                    df.groupby(aggregation["grouped"])
-                    .size()
-                    .reset_index(name=aggregation["alias"])
-                )
+                unmerged = df_groupby.size()
             case "distinct":
                 # FIXME: this is not working
                 pass
             case "sum":
-                unmerged = (
-                    df.groupby(aggregation["grouped"])[aggregation["column"]]
-                    .sum()
-                    .reset_index(name=aggregation["alias"])
-                )
+                unmerged = df_groupby.sum()
             case "avg":
-                unmerged = (
-                    df.groupby(aggregation["grouped"])[aggregation["column"]]
-                    .mean()
-                    .reset_index(name=aggregation["alias"])
-                )
+                unmerged = df_groupby.mean()
             case "max":
-                unmerged = (
-                    df.groupby(aggregation["grouped"])[aggregation["column"]]
-                    .max()
-                    .reset_index(name=aggregation["alias"])
-                )
+                unmerged = df_groupby.max()
             case "min":
-                unmerged = (
-                    df.groupby(aggregation["grouped"])[aggregation["column"]]
-                    .min()
-                    .reset_index(name=aggregation["alias"])
-                )
+                unmerged = df_groupby.min()
+            case _:
+                raise ValueError(f"Function {aggregation['function']} not supported.")
+        unmerged = unmerged.reset_index(name=aggregation["alias"])
         df = df.merge(unmerged, on=aggregation["grouped"])
 
     return df
