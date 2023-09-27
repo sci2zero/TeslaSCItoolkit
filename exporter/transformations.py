@@ -37,17 +37,14 @@ def preview() -> Any:
     data = DataSource.get()
     config = Config()
 
-    if "include" not in config.content:
-        logging.info("No columns to include in the dataset.")
-        # TODO: what about aggregate columns existing?
-        return
+    if "include" in config.content:
+        columns = config.content["include"]
+        validate_columns(data, columns)
+        logging.info("Included columns: %s", columns)
 
-    columns = config.content["include"]
-    validate_columns(data, columns)
-    logging.info("Included columns: %s", columns)
-
-    aggregations = config.content["aggregate"]
-    logging.info("Aggregations to apply: %s", aggregations)
+    if "aggregate" in config.content:
+        aggregations = config.content["aggregate"]
+        logging.info("Aggregations to apply: %s", aggregations)
 
     print("Preview of the dataset:")
     df = preview_dataset(data, config)
@@ -81,44 +78,59 @@ def add_columns(columns: list[str]) -> None:
 
 
 def preview_dataset(data: DataSource, config: Config) -> None:
-    """Prints the first 10 rows of the dataset."""
+    """Applies the transformations of the dataframe."""
 
-    columns = config.content["include"]
-    aggregations = config.content["aggregate"]
+    columns = config.content.get("include")
+    aggregations = config.content.get("aggregate")
 
     df = data.source.load()
-    df = df[columns]
 
-    df = _apply_aggregations(df, aggregations)
+    df = df[columns] if columns is not None else df
+
+    df = _apply_aggregations(df, aggregations, columns)
 
     return df
 
 
 def _apply_aggregations(
-    df: pd.DataFrame, aggregations: list[dict[str, str]]
+    df: pd.DataFrame, aggregations: list[dict[str, str]], columns: list[str]
 ) -> pd.DataFrame:
     """Applies the aggregations to the dataframe."""
+    data = {}
     for aggregation in aggregations:
-        df_groupby = df.groupby(aggregation["grouped"])[aggregation["column"]]
+        if aggregation.get("grouped") is not None:
+            df_aggregate = df.groupby(aggregation["grouped"])[aggregation["column"]]
+        else:
+            df_aggregate = df[aggregation["column"]]
 
         match aggregation["function"]:
             case "count":
-                unmerged = df_groupby.size()
+                unmerged = df_aggregate.size()
             case "distinct":
                 # FIXME: this is not working
                 pass
             case "sum":
-                unmerged = df_groupby.sum()
+                unmerged = df_aggregate.sum()
             case "avg":
-                unmerged = df_groupby.mean()
+                unmerged = df_aggregate.mean()
             case "max":
-                unmerged = df_groupby.max()
+                unmerged = df_aggregate.max()
             case "min":
-                unmerged = df_groupby.min()
+                unmerged = df_aggregate.min()
             case _:
                 raise ValueError(f"Function {aggregation['function']} not supported.")
-        unmerged = unmerged.reset_index(name=aggregation["alias"])
-        df = df.merge(unmerged, on=aggregation["grouped"])
+
+        if aggregation.get("grouped") is not None:
+            unmerged = unmerged.reset_index(name=aggregation["alias"])
+            df = df.merge(unmerged, on=aggregation["grouped"])
+        elif columns is not None:
+            df[aggregation["alias"]] = unmerged
+        else:
+            # no columns included, create new dataframe with aggregated data
+            data[aggregation["alias"]] = [unmerged]
+
+    if columns is None:
+        df = pd.DataFrame(data)
 
     return df
 

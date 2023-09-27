@@ -1,34 +1,10 @@
 aggregate:
-- alias: sum_salary_by_age
-  column: salary
-  function: sum
-  grouped: age
-- alias: avg_salary_by_age
-  column: salary
-  function: avg
-  grouped: age
-- alias: max_salary_by_age
-  column: salary
-  function: max
-  grouped: age
-- alias: min_salary_by_ages
-  column: age
-  function: min
-  grouped:
-  - age
-  - salary
-- alias: count_by_age_and_name
-  column: name
-  function: count
-  grouped:
-  - name
-  - age
+  - alias: avg_salary
+    column: salary
+    function: avg
+  - alias: avg_age
+    column: age
+    function: avg
 data:
   dest: exported.csv
   src: simple.csv
-include:
-- id
-- name
-- email
-- age
-- salary
