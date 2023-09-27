@@ -1,10 +1,12 @@
 aggregate:
-  - alias: avg_salary
-    column: salary
-    function: avg
-  - alias: avg_age
-    column: age
-    function: avg
+- alias: avg_salary
+  columns:
+  - salary
+  function: avg
+- alias: avg_age
+  columns:
+  - age
+  function: avg
 data:
   dest: exported.csv
   src: simple.csv

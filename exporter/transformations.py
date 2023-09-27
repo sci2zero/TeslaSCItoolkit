@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def aggregate(
-    function: str, column: str | None, group: list[str] | None, alias: str | None
+    function: str, columns: list[str] | None, group: list[str] | None, alias: str | None
 ) -> None:
     data = DataSource.get()
     config = Config()
@@ -22,7 +22,7 @@ def aggregate(
     if "aggregate" not in config.content:
         config.content["aggregate"] = []
 
-    aggregate_dict = attrs.asdict(Aggregate(function, column, alias))
+    aggregate_dict = attrs.asdict(Aggregate(function, columns, alias))
 
     if group is not None:
         aggregate_dict["grouped"] = group
@@ -97,10 +97,16 @@ def _apply_aggregations(
     """Applies the aggregations to the dataframe."""
     data = {}
     for aggregation in aggregations:
+        aggregation["columns"] = (
+            aggregation["columns"][0]
+            if len(aggregation["columns"]) == 1
+            else aggregation["columns"]
+        )
         if aggregation.get("grouped") is not None:
-            df_aggregate = df.groupby(aggregation["grouped"])[aggregation["column"]]
+            df_aggregate = df.groupby(aggregation["grouped"])[aggregation["columns"]]
         else:
-            df_aggregate = df[aggregation["column"]]
+            # without groupby, expected aggregate function is applied to a single column
+            df_aggregate = df[aggregation["columns"]]
 
         match aggregation["function"]:
             case "count":
@@ -128,7 +134,7 @@ def _apply_aggregations(
             # no columns included, create new dataframe with aggregated data
             data[aggregation["alias"]] = [unmerged]
 
-    if columns is None:
+    if columns is None and data != {}:
         df = pd.DataFrame(data)
 
     return df
