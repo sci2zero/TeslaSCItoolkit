@@ -102,8 +102,8 @@ class Config(object):
         """Stores the dataset name in the config file."""
         config = cls()
 
-        if config.content.get("data", None) is None:
-            config.content.setdefault("data", {"src": dataset, "dest": dest})
+        if config.content is None:
+            config.content = {"data": {"src": dataset, "dest": dest}}
         else:
             config.content["data"]["src"] = dataset
             config.content["data"]["dest"] = dest
@@ -115,6 +115,10 @@ class Config(object):
         if not self._content:
             self._content = self._read_config()
         return self._content
+
+    @content.setter
+    def content(self, value):
+        self._content = value
 
     def write(self):
         with open(self.config_path, "w") as yaml_file:

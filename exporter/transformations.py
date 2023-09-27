@@ -6,8 +6,7 @@ from typing import Any
 from exporter.scripts.context import DataSource, Config
 from exporter.types import Aggregate
 
-logging.basicConfig(level=logging.INFO)
-
+logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 
@@ -37,14 +36,14 @@ def preview() -> Any:
     data = DataSource.get()
     config = Config()
 
+    if not "aggregate" in config.content and not "include" in config.content:
+        logging.info("No transformations to apply to the dataset.")
+        return
+
     if "include" in config.content:
         columns = config.content["include"]
         validate_columns(data, columns)
         logging.info("Included columns: %s", columns)
-
-    if "aggregate" in config.content:
-        aggregations = config.content["aggregate"]
-        logging.info("Aggregations to apply: %s", aggregations)
 
     print("Preview of the dataset:")
     df = preview_dataset(data, config)
