@@ -36,7 +36,7 @@ def preview() -> Any:
     data = DataSource.get()
     config = Config()
 
-    if not "aggregate" in config.content and not "include" in config.content:
+    if "aggregate" not in config.content and "include" not in config.content:
         logging.info("No transformations to apply to the dataset.")
         return
 
