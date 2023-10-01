@@ -81,12 +81,14 @@ def preview_dataset(data: DataSource, config: Config) -> None:
 
     columns = config.content.get("include")
     aggregations = config.content.get("aggregate")
+    sort = config.content.get("sort")
 
     df = data.source.load()
 
     df = df[columns] if columns is not None else df
 
     df = _apply_aggregations(df, aggregations, columns)
+    df = _apply_sort(df, sort)
 
     return df
 
@@ -137,6 +139,22 @@ def _apply_aggregations(
     df = df.drop_duplicates()
 
     return df
+
+
+def _apply_sort(df: pd.DataFrame, sort: dict[str, Any]) -> pd.DataFrame:
+    sort_columns = []
+    is_ascending = []
+
+    for strategy, columns in sort.items():
+        match strategy:
+            case "ascending":
+                sort_columns.extend(columns)
+                is_ascending.extend([True] * len(columns))
+            case "descending":
+                sort_columns.extend(columns)
+                is_ascending.extend([False] * len(columns))
+
+    return df.sort_values(by=sort_columns, ascending=is_ascending)
 
 
 def apply() -> None:

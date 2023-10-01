@@ -16,3 +16,9 @@ include:
 data:
   dest: exported-adult.csv
   src: adult.csv
+sort:
+  ascending:
+    - count_hours-per-week_education_income
+    - education
+  descending:
+    - income
