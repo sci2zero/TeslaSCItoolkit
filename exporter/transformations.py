@@ -145,4 +145,4 @@ def apply() -> None:
 
     df = preview_dataset(data, config)
 
-    DataSource.save(df, config)
+    DataSource.save_to_file(df, config)

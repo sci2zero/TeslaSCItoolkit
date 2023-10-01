@@ -63,7 +63,7 @@ class DataSource(object):
         return csv
 
     @classmethod
-    def save(cls, df, config) -> None:
+    def save_to_file(cls, df, config) -> None:
         """Saves the data source."""
         dest_name = config.content.get("data", None).get("dest", None)
         dest_path = Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
