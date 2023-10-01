@@ -111,9 +111,6 @@ def _apply_aggregations(
         match aggregation["function"]:
             case "count":
                 unmerged = df_aggregate.size()
-            case "distinct":
-                # FIXME: this is not working
-                pass
             case "sum":
                 unmerged = df_aggregate.sum()
             case "avg":
@@ -136,6 +133,8 @@ def _apply_aggregations(
 
     if columns is None and data != {}:
         df = pd.DataFrame(data)
+
+    df = df.drop_duplicates()
 
     return df
 
