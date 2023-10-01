@@ -142,6 +142,9 @@ def _apply_aggregations(
 
 
 def _apply_sort(df: pd.DataFrame, sort: dict[str, Any]) -> pd.DataFrame:
+    if sort is None:
+        return df
+
     sort_columns = []
     is_ascending = []
 
