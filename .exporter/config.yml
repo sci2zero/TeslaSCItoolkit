@@ -10,3 +10,8 @@ aggregate:
 data:
   dest: exported.csv
   src: simple.csv
+mirror:
+  url:
+    -  https://github.com/n-dusan/exported-data-example
+  strategy: tag
+  token: <TOKEN>
