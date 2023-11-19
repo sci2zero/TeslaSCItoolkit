@@ -111,6 +111,15 @@ class Config(object):
             yaml.safe_dump(config.content, yaml_file, default_flow_style=False)
 
     @property
+    def dest_name(self) -> str:
+        return self.content.get("data", None).get("dest", None)
+
+    @property
+    def destination_path(self) -> Path:
+        dest_name = self.dest_name
+        return Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
+
+    @property
     def content(self):
         if not self._content:
             self._content = self._read_config()

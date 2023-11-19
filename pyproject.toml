@@ -7,6 +7,7 @@ dependencies = [
     "requests",
     "pandas",
     "pyyaml",
+    "PyGithub>=2.1.1",
     "attrs",
     'importlib-metadata; python_version<"3.8"',
 ]
