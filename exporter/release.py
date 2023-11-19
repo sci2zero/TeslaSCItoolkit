@@ -35,6 +35,7 @@ def _release_to_remote_batch(
 
 def _release_to_remote(release: dict[str, Any], destination_path: Path) -> None:
     repo_url = release["url"]
+    print(f"Releasing {destination_path.name} to {repo_url}")
     parsed_url = urlparse(repo_url)
     path_parts = parsed_url.path.split("/")
     org_and_name = f"{path_parts[1]}/{path_parts[2]}"
