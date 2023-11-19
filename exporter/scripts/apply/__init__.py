@@ -1,15 +1,17 @@
+import os
+
 import click
 
 import exporter.transformations as transformations
 
 
 @click.command()
-@click.option("--ci", default=False, is_flag=True, help="Run in CI mode")
-def apply(ci):
+def apply():
     """Apply the changes to the destination dataset"""
     transformations.preview()
 
-    if not ci:
+    is_ci = os.environ.get("EXPORTER_RUN_FROM_CI", None)
+    if not is_ci:
         if click.confirm("Are you sure you want to apply these changes?"):
             transformations.apply()
         else:

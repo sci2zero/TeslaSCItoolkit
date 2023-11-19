@@ -1,5 +1,8 @@
 on: [push]
 
+env:
+  EXPORTER_RUN_FROM_CI: True
+
 jobs:
   run-exporter:
     runs-on: ubuntu-latest
@@ -21,7 +24,7 @@ jobs:
           pip install -e .
       - name: Run exporter apply
         run: |
-          exporter apply --ci
+          exporter apply
       - name: Display datasets
         run: tail -n +1 -- .exporter/*
       - name: Release
