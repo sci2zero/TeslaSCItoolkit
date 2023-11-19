@@ -2,6 +2,7 @@ on: [push]
 
 env:
   EXPORTER_RUN_FROM_CI: True
+  EXPORTER_RELEASE_STRATEGY: "${{ startsWith(github.ref, 'refs/tags/') && 'tag' || 'commit' }}"
 
 jobs:
   run-exporter:
@@ -27,6 +28,11 @@ jobs:
           exporter apply
       - name: Display datasets
         run: tail -n +1 -- .exporter/*
+      - name: Run exporter release
+        run: |
+          exporter release
+        env:
+          RELEASE_API_TOKEN: ${{ secrets.RELEASE_API_TOKEN }}
       - name: Release
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')

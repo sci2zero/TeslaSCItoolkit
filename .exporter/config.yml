@@ -8,10 +8,10 @@ aggregate:
   - age
   function: avg
 data:
-  dest: exported.csv
+  dest: exported-adult.csv
   src: simple.csv
-mirror:
-  url:
-    -  https://github.com/n-dusan/exported-data-example
-  strategy: tag
-  token: <TOKEN>
+release:
+  - url: https://github.com/n-dusan/exporter-data-example
+    strategy: tag
+  - url: https://github.com/n-dusan/exporter-data-example-2
+    strategy: commit

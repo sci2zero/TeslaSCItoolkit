@@ -3,22 +3,32 @@ import os
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
-
+from enum import Enum
 from github import Auth, Github
 
 from exporter.scripts.context import Config
 
 
-def release() -> None:
+class Strategy(Enum):
+    """Strategy for releasing the dataset."""
+
+    COMMIT = "commit"
+    TAG = "tag"
+
+
+def release(strategy: Strategy | None) -> None:
     config = Config()
     releases = config.content["release"]
     destination_path = config.destination_path
-    _release_to_remote_batch(releases, destination_path)
+    _release_to_remote_batch(releases, destination_path, strategy)
 
 
 def _release_to_remote_batch(
-    releases: list[dict[str, Any]], destination_path: Path
+    releases: list[dict[str, Any]], destination_path: Path, strategy: Strategy | None
 ) -> None:
+    if strategy is not None:
+        releases = [release for release in releases if release["strategy"] == strategy]
+
     for release in releases:
         _release_to_remote(release, destination_path)
 
