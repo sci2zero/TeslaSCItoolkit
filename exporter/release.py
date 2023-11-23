@@ -10,7 +10,7 @@ from exporter.scripts.context import Config
 
 
 class Strategy(Enum):
-    """Strategy for releasing the dataset."""
+    """Strategy for releasing the exported data."""
 
     COMMIT = "commit"
     TAG = "tag"
