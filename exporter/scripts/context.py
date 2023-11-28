@@ -47,6 +47,7 @@ class DataSource(object):
         self.config = Config()
         self.source = self.load()
         self._loaded = None
+        self.join_sources = None
 
     @classmethod
     def get(cls):
@@ -55,8 +56,22 @@ class DataSource(object):
     def load(self) -> Data:
         """Loads the data source."""
         source_path = self.config.content.get("data", None).get("src", None)
-        if not source_path:
+        join_sources = self.config.content.get("join", None)
+        if not source_path and not join_sources:
             raise ValueError("No data source found in the config file.")
+        if source_path and join_sources:
+            raise ValueError(
+                "You cannot specify both a data source and join sources in the config file."
+            )
+        if join_sources:
+            self.join_sources = [
+                JoinSource(
+                    DataSource(join_source),
+                    join_sources["on"],
+                    join_sources.get("how", "left"),
+                )
+                for join_source in join_sources["src"]
+            ]
         # TODO: auto-determine the data source type
         csv = CSV(source_path)
         self._loaded = list(csv.load())
@@ -132,3 +147,10 @@ class Config(object):
     def write(self):
         with open(self.config_path, "w") as yaml_file:
             yaml.safe_dump(self.content, yaml_file, default_flow_style=False)
+
+
+class JoinSource(object):
+    def __init__(self, source: DataSource, on: str, how: str = "left") -> None:
+        self.source = source
+        self.on = on
+        self.how = how

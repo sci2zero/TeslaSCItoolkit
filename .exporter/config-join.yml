@@ -7,12 +7,13 @@ aggregate:
   columns:
   - age
   function: avg
+join:
+  src:
+  - simple.csv
+  - simple-join.csv # see https://csvkit.readthedocs.io/en/latest/scripts/csvjoin.html
+  on:
+    columns:
+      - "email" # TODO
+  how: "left" # TODO:? stacked, inner
 data:
   dest: exported-adult.csv
-  src: 
-   join: 
-    - simple.csv
-    - simple-join.csv # see https://csvkit.readthedocs.io/en/latest/scripts/csvjoin.html
-   on:
-     columns:
-      - "email" # TODO
