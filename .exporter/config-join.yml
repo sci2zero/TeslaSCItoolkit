@@ -1,19 +1,10 @@
-aggregate:
-- alias: avg_salary
-  columns:
-  - salary
-  function: avg
-- alias: avg_age
-  columns:
-  - age
-  function: avg
 join:
   src:
   - simple.csv
-  - simple-join.csv # see https://csvkit.readthedocs.io/en/latest/scripts/csvjoin.html
-  on:
-    columns:
-      - "email" # TODO
-  how: "left" # TODO:? stacked, inner
+  - simple-join.csv
+  columns:
+    - "email"
+    - "salary"
+  how: "inner"
 data:
-  dest: exported-adult.csv
+  dest: exported-join.csv

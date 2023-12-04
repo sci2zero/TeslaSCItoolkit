@@ -36,7 +36,11 @@ def preview() -> Any:
     data = DataSource.get()
     config = Config()
 
-    if "aggregate" not in config.content and "include" not in config.content:
+    if (
+        "aggregate" not in config.content
+        and "include" not in config.content
+        and "join" not in config.content
+    ):
         logging.info("No transformations to apply to the dataset.")
         return
 
@@ -83,10 +87,8 @@ def preview_dataset(data: DataSource, config: Config) -> None:
     aggregations = config.content.get("aggregate")
     sort = config.content.get("sort")
 
-    df = data.source.load()
-
-    df = df[columns] if columns is not None else df
-
+    df = _apply_join(data) if data.join_sources is not None else data.source.load()
+    df = _apply_include(df, columns)
     df = _apply_aggregations(df, aggregations, columns)
     df = _apply_sort(df, sort)
 
@@ -97,6 +99,9 @@ def _apply_aggregations(
     df: pd.DataFrame, aggregations: list[dict[str, str]], columns: list[str]
 ) -> pd.DataFrame:
     """Applies the aggregations to the dataframe."""
+    if aggregations is None:
+        return df
+
     data = {}
     for aggregation in aggregations:
         aggregation["columns"] = (
@@ -139,6 +144,26 @@ def _apply_aggregations(
     df = df.drop_duplicates()
 
     return df
+
+
+def _apply_join(data: DataSource) -> pd.DataFrame:
+    """Applies the join to the dataframe."""
+    df = None
+    for join_source in data.join_sources:
+        current_df = join_source.df
+        if df is None:
+            df = current_df
+            continue
+        df = df.merge(current_df, on=join_source.columns, how=join_source.how)
+    return df
+
+
+def _apply_include(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
+    """Applies the include to the dataframe."""
+    if columns is None:
+        return df
+
+    return df[columns]
 
 
 def _apply_sort(df: pd.DataFrame, sort: dict[str, Any]) -> pd.DataFrame:

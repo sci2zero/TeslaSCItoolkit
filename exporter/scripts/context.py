@@ -36,7 +36,7 @@ class CSV(Data):
 
         self.df = self.load()
 
-    def load(self):
+    def load(self) -> pd.DataFrame:
         csv_file = open(self.path, "r")
         csv_reader = pd.read_csv(csv_file)
         return csv_reader
@@ -44,16 +44,16 @@ class CSV(Data):
 
 class DataSource(object):
     def __init__(self) -> None:
-        self.config = Config()
-        self.source = self.load()
-        self._loaded = None
         self.join_sources = None
+        self.config = Config()
+        self.source: Data = self.load()
+        self._loaded = None
 
     @classmethod
     def get(cls):
         return cls()
 
-    def load(self) -> Data:
+    def load(self) -> Data | list[Data]:
         """Loads the data source."""
         source_path = self.config.content.get("data", None).get("src", None)
         join_sources = self.config.content.get("join", None)
@@ -66,16 +66,17 @@ class DataSource(object):
         if join_sources:
             self.join_sources = [
                 JoinSource(
-                    DataSource(join_source),
-                    join_sources["on"],
+                    CSV(join_source).load(),
+                    join_sources["columns"],
                     join_sources.get("how", "left"),
                 )
                 for join_source in join_sources["src"]
             ]
-        # TODO: auto-determine the data source type
-        csv = CSV(source_path)
-        self._loaded = list(csv.load())
-        return csv
+            return self.join_sources
+        else:  # TODO: auto-determine the data source type
+            csv = CSV(source_path)
+            self._loaded = list(csv.load())
+            return csv
 
     @classmethod
     def save_to_file(cls, df, config) -> None:
@@ -149,8 +150,8 @@ class Config(object):
             yaml.safe_dump(self.content, yaml_file, default_flow_style=False)
 
 
-class JoinSource(object):
-    def __init__(self, source: DataSource, on: str, how: str = "left") -> None:
-        self.source = source
-        self.on = on
+class JoinSource(Data):
+    def __init__(self, df: pd.DataFrame, columns: list[str], how: str = "left") -> None:
+        self.df = df
+        self.columns = columns
         self.how = how
