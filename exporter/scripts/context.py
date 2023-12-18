@@ -30,7 +30,7 @@ class Data(object):
         pass
 
 
-class CSV(Data):
+class Reader(Data):
     def __init__(self, path: str = None) -> None:
         super().__init__(path)
 
@@ -38,8 +38,14 @@ class CSV(Data):
 
     def load(self) -> pd.DataFrame:
         csv_file = open(self.path, "r")
-        csv_reader = pd.read_csv(csv_file)
-        return csv_reader
+        match self.path.suffix:
+            case ".xlsx":
+                reader = pd.read_excel(csv_file)
+            case ".csv":
+                reader = pd.read_csv(csv_file)
+            case _:
+                raise ValueError(f"File type '{self.path.suffix}' not supported.")
+        return reader
 
 
 class DataSource(object):
@@ -66,7 +72,7 @@ class DataSource(object):
         if join_sources:
             self.join_sources = [
                 JoinSource(
-                    CSV(join_source).load(),
+                    Reader(join_source).load(),
                     join_sources["columns"],
                     join_sources.get("how", "left"),
                 )
@@ -74,7 +80,7 @@ class DataSource(object):
             ]
             return self.join_sources
         else:  # TODO: auto-determine the data source type
-            csv = CSV(source_path)
+            csv = Reader(source_path)
             self._loaded = list(csv.load())
             return csv
 
