@@ -9,6 +9,8 @@ dependencies = [
     "pyyaml",
     "PyGithub>=2.1.1",
     "attrs",
+    "xlrd",
+    "rapidfuzz>=3.5.2",
     'importlib-metadata; python_version<"3.8"',
 ]
 

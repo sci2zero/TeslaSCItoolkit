@@ -3,6 +3,7 @@ import pandas as pd
 import attrs
 
 from typing import Any
+from rapidfuzz import process
 from exporter.scripts.context import DataSource, Config
 from exporter.types import Aggregate
 
@@ -148,6 +149,13 @@ def _apply_aggregations(
 
 def _apply_join(data: DataSource) -> pd.DataFrame:
     """Applies the join to the dataframe."""
+    if not data.join_sources.fuzzy:
+        return _apply_join_strict(data)
+    else:
+        return _apply_join_fuzzy(data)
+
+
+def _apply_join_strict(data: DataSource) -> pd.DataFrame:
     df = None
     for join_source in data.join_sources:
         current_df = join_source.df
@@ -156,6 +164,17 @@ def _apply_join(data: DataSource) -> pd.DataFrame:
             continue
         df = df.merge(current_df, on=join_source.columns, how=join_source.how)
     return df
+
+def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
+    if len(data.join_sources.sources) < 2:
+        raise ValueError("Fuzzy join requires at least two sources.")
+
+    df_1 = data.join_sources.sources[0].df
+    df_2 = data.join_sources.sources[1].df
+
+    for col in df_1.columns:
+        if col not in df_2.columns:
+            df_2[col] = None
 
 
 def _apply_include(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:

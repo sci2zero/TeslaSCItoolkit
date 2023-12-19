@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+import attrs
 import pandas as pd
 import yaml
 
@@ -37,12 +38,11 @@ class Reader(Data):
         self.df = self.load()
 
     def load(self) -> pd.DataFrame:
-        csv_file = open(self.path, "r")
         match self.path.suffix:
-            case ".xlsx":
-                reader = pd.read_excel(csv_file)
+            case ".xlsx" | ".xls":
+                reader = pd.read_excel(self.path)
             case ".csv":
-                reader = pd.read_csv(csv_file)
+                reader = pd.read_csv(self.path)
             case _:
                 raise ValueError(f"File type '{self.path.suffix}' not supported.")
         return reader
@@ -70,19 +70,22 @@ class DataSource(object):
                 "You cannot specify both a data source and join sources in the config file."
             )
         if join_sources:
-            self.join_sources = [
-                JoinSource(
-                    Reader(join_source).load(),
-                    join_sources["columns"],
-                    join_sources.get("how", "left"),
-                )
-                for join_source in join_sources["src"]
-            ]
+            self.join_sources = JoinSources(
+                sources=[
+                    JoinSource(
+                        Reader(join_source).load(),
+                        join_sources.get("columns", None),
+                    )
+                    for join_source in join_sources["src"]
+                ],
+                how=join_sources.get("how", "left"),
+                fuzzy=join_sources.get("fuzzy", False),
+            )
             return self.join_sources
-        else:  # TODO: auto-determine the data source type
-            csv = Reader(source_path)
-            self._loaded = list(csv.load())
-            return csv
+        else:
+            reader = Reader(source_path)
+            self._loaded = list(reader.load())
+            return reader
 
     @classmethod
     def save_to_file(cls, df, config) -> None:
@@ -155,9 +158,17 @@ class Config(object):
         with open(self.config_path, "w") as yaml_file:
             yaml.safe_dump(self.content, yaml_file, default_flow_style=False)
 
-
 class JoinSource(Data):
-    def __init__(self, df: pd.DataFrame, columns: list[str], how: str = "left") -> None:
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        columns: list[str] | None,
+    ) -> None:
         self.df = df
         self.columns = columns
-        self.how = how
+
+@attrs.define
+class JoinSources:
+    sources: list[JoinSource] = attrs.field(default=[])
+    how: str = attrs.field(default="left")
+    fuzzy: bool = attrs.field(default=False)
