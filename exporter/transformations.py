@@ -3,9 +3,11 @@ import pandas as pd
 import attrs
 
 from typing import Any
-from rapidfuzz import process
+from multiprocessing import Pool, set_start_method
+from functools import partial
+from rapidfuzz import process, fuzz, utils
 from exporter.scripts.context import DataSource, Config
-from exporter.types import Aggregate
+from exporter.types import Aggregate, FuzzyColumnCandidates, MatchesPerColumn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
@@ -165,16 +167,44 @@ def _apply_join_strict(data: DataSource) -> pd.DataFrame:
         df = df.merge(current_df, on=join_source.columns, how=join_source.how)
     return df
 
+
 def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
     if len(data.join_sources.sources) < 2:
         raise ValueError("Fuzzy join requires at least two sources.")
 
-    df_1 = data.join_sources.sources[0].df
-    df_2 = data.join_sources.sources[1].df
+    df1 = data.join_sources.sources[0].df
+    df2 = data.join_sources.sources[1].df
 
-    for col in df_1.columns:
-        if col not in df_2.columns:
-            df_2[col] = None
+    matches = MatchesPerColumn()
+
+    for col1 in df1.columns:
+        print("[df1] Processing column: ", col1)
+        for data1 in df1[col1][1:20]:
+            for col2 in df2.columns:
+                try:
+                    score = process.extractOne(
+                        data1,
+                        df2[col2],
+                        scorer=fuzz.QRatio,
+                        processor=utils.default_process,
+                    )
+                    if score[1] < 90:
+                        continue
+
+                    matches.column_candidates.setdefault(col1, []).append(
+                        FuzzyColumnCandidates(column=col2, fuzzy_matches=score)
+                    )
+                except TypeError:
+                    pass
+    matched_columns = []
+    for col1, candidates in matches.column_candidates.items():
+        if len(candidates) == 0:
+            continue
+        matched_columns.append((col1, candidates[0].column))
+    breakpoint()
+    pass
+    # if col not in df_2.columns:
+    #     df_2[col] = None
 
 
 def _apply_include(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
