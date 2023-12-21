@@ -176,7 +176,7 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
     df2 = data.join_sources.sources[1].df
 
     matches = MatchesPerColumn()
-
+    # col1 = "Authors"
     for col1 in df1.columns:
         print("[df1] Processing column: ", col1)
         for data1 in df1[col1][1:20]:
@@ -188,11 +188,13 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
                         scorer=fuzz.QRatio,
                         processor=utils.default_process,
                     )
-                    if score[1] < 90:
+                    if score[1] < 80:
                         continue
 
                     matches.column_candidates.setdefault(col1, []).append(
-                        FuzzyColumnCandidates(column=col2, fuzzy_matches=score)
+                        FuzzyColumnCandidates(
+                            column=col2, reference_data=data1, fuzzy_matches=score
+                        )
                     )
                 except TypeError:
                     pass
@@ -201,8 +203,36 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
         if len(candidates) == 0:
             continue
         matched_columns.append((col1, candidates[0].column))
+
     breakpoint()
-    pass
+    # merge data from df2 with data from df1
+    # however, only the data from df2 that has a fuzz qratio over 80 should get merged
+    for col1, col2 in matched_columns:
+        print("[df1] Merging column: \"", col1, "\" with column: \"", col2 + "\"")
+        for data1 in df1[col1]:
+            score = process.extractOne(
+                data1,
+                df2[col2],
+                scorer=fuzz.QRatio,
+                processor=utils.default_process,
+            )
+            try:
+                if score[1] < 80:
+                    continue
+            except TypeError:
+                continue
+
+            df1[col1] = df1[col1].replace(data1, score[0])
+
+    breakpoint()
+    # cascade all other columns from df2 to df1
+    for col in df2.columns:
+        if col in df1.columns or col in matched_columns:
+            continue
+        print("[df1] Cascading column: ", col)
+        df1[col] = df2[col]
+
+    return df1
     # if col not in df_2.columns:
     #     df_2[col] = None
 

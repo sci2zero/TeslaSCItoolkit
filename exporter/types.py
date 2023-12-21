@@ -11,6 +11,7 @@ class Aggregate:
 @attrs.define
 class FuzzyColumnCandidates:
     column: str = attrs.field(default="")
+    reference_data: str = attrs.field(default="")
     fuzzy_matches: list[tuple[str, str, str]] = attrs.field(default=[])
 
 

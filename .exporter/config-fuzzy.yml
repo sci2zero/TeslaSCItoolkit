@@ -3,7 +3,7 @@ join:
   - scopus.csv
   - web-of-science.xls
   - openalex.csv
-  how: "cascade"
+  how: "inner"
   fuzzy: true
 data:
-  dest: exported-join-fuzzy.csv
+  dest: exported-fuzzy.csv
