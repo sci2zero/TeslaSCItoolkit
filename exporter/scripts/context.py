@@ -96,7 +96,13 @@ class DataSource(object):
         if not dest_path:
             raise ValueError("No data destination found in the config file.")
         try:
-            df.to_csv(dest_path, index=False)
+            match dest_path.suffix:
+                case ".xlsx" | ".xls":
+                    df.to_excel(dest_path, index=False)
+                case ".csv":
+                    df.to_csv(dest_path, index=False)
+                case _:
+                    raise ValueError(f"File type '{dest_path.suffix}' not supported.")
         except Exception as e:
             print(f"Error while saving the data source: {e}")
             raise
@@ -158,6 +164,7 @@ class Config(object):
         with open(self.config_path, "w") as yaml_file:
             yaml.safe_dump(self.content, yaml_file, default_flow_style=False)
 
+
 class JoinSource(Data):
     def __init__(
         self,
@@ -166,6 +173,7 @@ class JoinSource(Data):
     ) -> None:
         self.df = df
         self.columns = columns
+
 
 @attrs.define
 class JoinSources:

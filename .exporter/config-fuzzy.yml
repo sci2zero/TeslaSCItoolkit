@@ -6,4 +6,4 @@ join:
   how: "inner"
   fuzzy: true
 data:
-  dest: exported-fuzzy.csv
+  dest: exported-fuzzy.xls

@@ -8,7 +8,7 @@ import exporter.transformations as transformations
 @click.command()
 def apply():
     """Apply the changes to the destination dataset"""
-    transformations.preview()
+    # transformations.preview()
 
     is_ci = os.environ.get("EXPORTER_RUN_FROM_CI", None)
     if not is_ci:
