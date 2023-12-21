@@ -3,8 +3,6 @@ import pandas as pd
 import attrs
 
 from typing import Any
-from multiprocessing import Pool, set_start_method
-from functools import partial
 from rapidfuzz import process, fuzz, utils
 from exporter.scripts.context import DataSource, Config
 from exporter.types import Aggregate, FuzzyColumnCandidates, MatchesPerColumn
@@ -177,6 +175,7 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
 
     matches = MatchesPerColumn()
     # col1 = "Authors"
+    # TODO: specify in config.yml which columns and with what score to merge data
     for col1 in df1.columns:
         print("[df1] Processing column: ", col1)
         for data1 in df1[col1][1:20]:
@@ -208,7 +207,7 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
     # merge data from df2 with data from df1
     # however, only the data from df2 that has a fuzz qratio over 80 should get merged
     for col1, col2 in matched_columns:
-        print("[df1] Merging column: \"", col1, "\" with column: \"", col2 + "\"")
+        print('[df1] Merging column: "', col1, '" with column: "', col2 + '"')
         for data1 in df1[col1]:
             score = process.extractOne(
                 data1,
@@ -224,7 +223,7 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
 
             df1[col1] = df1[col1].replace(data1, score[0])
 
-    breakpoint()
+    # breakpoint()
     # cascade all other columns from df2 to df1
     for col in df2.columns:
         if col in df1.columns or col in matched_columns:
