@@ -176,7 +176,31 @@ class JoinSource(Data):
 
 
 @attrs.define
+class RatioConfig:
+    above: float = attrs.field(default=None)
+    cutoff: float = attrs.field(default=None)
+
+
+@attrs.define
+class MergeColumn:
+    from_: str = attrs.field(default=None)
+    into_: str = attrs.field(default=None)
+    ratio: RatioConfig = attrs.field(default=None)
+
+
+@attrs.define
+class MergeConfig:
+    columns: list[MergeColumn] = attrs.field(default=[])
+
+
+@attrs.define
+class FuzzyConfig:
+    merge: MergeConfig = attrs.field(default=None)
+
+
+@attrs.define
 class JoinSources:
     sources: list[JoinSource] = attrs.field(default=[])
     how: str = attrs.field(default="left")
     fuzzy: bool = attrs.field(default=False)
+    fuzzy_config: FuzzyConfig = attrs.field(default=None)
