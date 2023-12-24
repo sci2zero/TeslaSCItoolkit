@@ -61,25 +61,25 @@ def suggest():
 
 
 def merge():
-    # columns:
-    # - from: "Authors"
-    #   into: "Authors"
-    #   ratio:
-    #     above: 75
-    #     cutoff: 55
-    # - from: "Article Title"
-    #   into: "Title"
-    #   ratio:
-    #     above: 90
-    #     cutoff: 80
     columns = [
-        # {"from_": "Authors", "into_": "Authors", "ratio": {"above": 75, "cutoff": 55}},
         {
             "from_": "Title",
             "into_": "Article Title",
-            "ratio": {"above": 90, "cutoff": 80},
+            "similarity": {
+                "above": 90,
+                "cutoff": 80,
+                "preprocess": True,
+            },
+            "is_reference": True,
+        },
+        {
+            "from_": "Authors",
+            "into_": "Authors",
+            "similarity": {"above": 0, "cutoff": 0},
         },
     ]
+
+    config = {"strategy": ""}  # TODO
     data = DataSource.get()
 
     df1 = data.join_sources.sources[0].df
@@ -95,38 +95,93 @@ def merge():
     no_matches = []
 
     result_df = df1.copy()
+    print('[df1] Merging columns: "', columns)
 
-    for column in columns:
-        from_col = column["from_"]
-        into_col = column["into_"]
-        ratio_above = column["ratio"]["above"]
-        ratio_cutoff = column["ratio"]["cutoff"]
+    for data2 in df2.iterrows():
+        columns_to_score = {}
+        can_merge = True
+        for column in columns:
+            from_col = column["from_"]
+            into_col = column["into_"]
+            similarity_above = column["similarity"]["above"]
+            similarity_cutoff = column["similarity"]["cutoff"]
+            is_reference = column.get("is_reference", False)
 
-        print('[df1] Merging column: "', from_col, '" with column: "', into_col + '"')
-        for data2 in df2[from_col]:
-            score = process.extractOne(
-                data2,
-                df1[into_col],
-                scorer=fuzz.WRatio,
-                processor=utils.default_process,
+            use_processor = (
+                utils.default_process
+                if (
+                    column["similarity"].get("preprocess", None) is None
+                    or column["similarity"].get("preprocess", None) is True
+                )
+                else None
             )
-            try:
-                if score[1] == 100:
-                    exact_matches.append((data2, score))
-                    continue
-                elif score[1] >= ratio_above:
-                    suggested_matches.append((data2, score))
-                elif score[1] >= ratio_cutoff:
-                    potential_matches.append((data2, score))
-                elif score[1] < ratio_cutoff:
-                    no_matches.append((data2, score))
-            except TypeError:
+            score = process.extractOne(
+                data2[1][from_col],
+                result_df[into_col],
+                scorer=fuzz.QRatio,
+                processor=use_processor,
+            )
+
+            columns_to_score.setdefault((from_col, into_col), []).append(score)
+
+            if score[1] == 100:
                 continue
-            # using pandas, create a new dataframe which contains merged data from df1 and df2.
-            # the criteria for merging is a shared column with a fuzz ratio above 80
-            if score[1] >= ratio_above:
-                breakpoint()
-                result_df[into_col] = result_df[into_col].replace(score[0], data2)
-                # TODO: cascade other columns for that exact match into df1
-    # breakpoint()
+            if score[1] >= similarity_above:
+                continue
+            if score[1] >= similarity_cutoff and not is_reference:
+                continue
+            can_merge = False
+            break
+
+        if can_merge:
+            for matched_columns, scores in columns_to_score.items():
+                from_col, into_col = matched_columns
+                result_df[into_col] = result_df[into_col].replace(
+                    scores[0], data2[1][from_col]
+                )
+        reference_column = [
+            (column["from_"], column["into_"])
+            for column in columns
+            if column.get("is_reference")
+        ][0]
+        score = columns_to_score[reference_column][0]
+        try:
+            if score[1] == 100:
+                exact_matches.append((data2, score))
+            elif score[1] >= similarity_above:
+                suggested_matches.append((data2, score))
+            elif score[1] >= similarity_cutoff:
+                potential_matches.append((data2, score))
+                continue
+            elif score[1] < similarity_cutoff:
+                no_matches.append((data2, score))
+                continue
+        except TypeError:
+            continue
+    into_columns = [column["into_"] for column in columns if column["into_"]]
+    from_columns = [column["from_"] for column in columns if column["from_"]]
+    result_df = result_df.merge(
+        df2,
+        how="left",
+        left_on=into_columns,
+        right_on=from_columns,
+        suffixes=("", "_df2"),
+    )
+    result_df.drop(result_df.filter(regex="_df2$").columns, axis=1, inplace=True)
+
+    analytics = {
+        "exact_matches": len(exact_matches),
+        "suggested_matches": len(suggested_matches),
+        "potential_matches": len(potential_matches),
+        "no_matches": len(no_matches),
+        "sum of merged matches": len(exact_matches) + len(suggested_matches),
+        "sum of non-merged matches": len(potential_matches) + len(no_matches),
+        "total matches": len(exact_matches)
+        + len(suggested_matches)
+        + len(potential_matches)
+        + len(no_matches),
+        "df2 size": len(df2),
+        "df1 size": len(df1),
+        "result_df size": len(result_df),
+    }
     pass
