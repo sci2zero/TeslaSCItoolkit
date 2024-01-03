@@ -42,7 +42,7 @@ def suggest():
                         scorer=fuzz.QRatio,
                         processor=utils.default_process,
                     )
-                    if score[1] < 80:
+                    if score[1] < 90:
                         continue
 
                     matches.column_candidates.setdefault(col1, []).append(
@@ -66,8 +66,8 @@ def merge():
             "from_": "Title",
             "into_": "Article Title",
             "similarity": {
-                "above": 90,
-                "cutoff": 80,
+                "above": 99,
+                "cutoff": 85,
                 "preprocess": True,
             },
             "is_reference": True,
@@ -75,7 +75,7 @@ def merge():
         {
             "from_": "Authors",
             "into_": "Authors",
-            "similarity": {"above": 0, "cutoff": 0},
+            "similarity": {"above": 80, "cutoff": 40, "preprocess": True},
         },
     ]
 
@@ -95,7 +95,7 @@ def merge():
     no_matches = []
 
     result_df = df1.copy()
-    print('[df1] Merging columns: "', columns)
+    print('[df1] Traversing columns: "', columns)
 
     for data2 in df2.iterrows():
         columns_to_score = {}
@@ -147,6 +147,7 @@ def merge():
         score = columns_to_score[reference_column][0]
         try:
             if score[1] == 100:
+                breakpoint()
                 exact_matches.append((data2, score))
             elif score[1] >= similarity_above:
                 suggested_matches.append((data2, score))
@@ -168,7 +169,7 @@ def merge():
         suffixes=("", "_df2"),
     )
     result_df.drop(result_df.filter(regex="_df2$").columns, axis=1, inplace=True)
-
+    result_df = result_df.drop_duplicates()
     analytics = {
         "exact_matches": len(exact_matches),
         "suggested_matches": len(suggested_matches),
@@ -184,4 +185,10 @@ def merge():
         "df1 size": len(df1),
         "result_df size": len(result_df),
     }
-    pass
+    import pprint
+
+    pp = pprint.PrettyPrinter(indent=4)
+    pp.pprint(analytics)
+    df = result_df
+    breakpoint()
+    DataSource.save_to_file(df, Config())
