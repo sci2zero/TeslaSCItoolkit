@@ -88,9 +88,12 @@ class DataSource(object):
             return reader
 
     @classmethod
-    def save_to_file(cls, df, config) -> None:
+    def save_to_file(cls, df, config, name_override=None) -> None:
         """Saves the data source."""
-        dest_name = config.content.get("data", None).get("dest", None)
+        if name_override is None:
+            dest_name = config.content.get("data", None).get("dest", None)
+        else:
+            dest_name = name_override
         dest_path = Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
 
         if not dest_path:
