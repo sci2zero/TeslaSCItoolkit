@@ -77,6 +77,21 @@ def merge():
             "into_": "Authors",
             "similarity": {"above": 80, "cutoff": 40, "preprocess": True},
         },
+        # {
+        #     "from_": "Year",
+        #     "into_": "Publication Year",
+        #     "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
+        # },
+        {
+            "from_": "DOI",
+            "into_": "DOI",
+            "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
+        },
+        {
+            "from_": "Source title",
+            "into_": "Source Title",
+            "similarity": {"above": 95, "cutoff": 90, "preprocess": True},
+        },
     ]
 
     config = {"strategy": "", "drop_duplicates": False}
@@ -95,7 +110,11 @@ def merge():
     suggested_matches = []
     potential_matches = []
     no_matches = []
-
+    merged_exact_series = []
+    merged_suggested_series = []
+    # unmerged_potential_series = []
+    # unmerged_no_matches_series = []
+    common_cols = df1.columns.intersection(df2.columns).tolist()
     print('[df1] Traversing columns: "', columns)
     for _, data2 in df2.iterrows():
         columns_to_score = {}
@@ -121,14 +140,16 @@ def merge():
                 processor=use_processor,
             )
             columns_to_score.setdefault((from_col, into_col), []).append(score)
-
-            if score[1] == 100:
+            try:
+                if score[1] == 100:
+                    continue
+                if score[1] >= similarity_above:
+                    continue
+                if score[1] >= similarity_cutoff and not is_reference:
+                    continue
+                break
+            except TypeError:
                 continue
-            if score[1] >= similarity_above:
-                continue
-            if score[1] >= similarity_cutoff and not is_reference:
-                continue
-            break
         reference_column = [
             (column["from_"], column["into_"])
             for column in columns
@@ -136,10 +157,20 @@ def merge():
         ][0]
         score = columns_to_score[reference_column][0]
         try:
+            s1 = data2
+            s2 = df1.iloc[score[2]].copy()
+            # TODO: make configurable: use col from first, col from second or use both
+            # common_cols = s1.index.intersection(s2.index).tolist()
+            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
+            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
             if score[1] == 100:
                 exact_matches.append((data2, score))
+                res = pd.concat([s1, s2], join="inner")
+                merged_exact_series.append(res)
             elif score[1] >= similarity_above:
                 suggested_matches.append((data2, score))
+                res = pd.concat([s1, s2], join="inner")
+                merged_suggested_series.append(res)
             elif score[1] >= similarity_cutoff:
                 potential_matches.append((data2, score))
                 continue
@@ -182,14 +213,16 @@ def merge():
             )
 
             columns_to_score.setdefault((into_col, from_col), []).append(score)
-
-            if score[1] == 100:
+            try:
+                if score[1] == 100:
+                    continue
+                if score[1] >= similarity_above:
+                    continue
+                if score[1] >= similarity_cutoff and not is_reference:
+                    continue
+                break
+            except TypeError:
                 continue
-            if score[1] >= similarity_above:
-                continue
-            if score[1] >= similarity_cutoff and not is_reference:
-                continue
-            break
         reference_column = [
             (column["into_"], column["from_"])
             for column in columns
@@ -197,10 +230,20 @@ def merge():
         ][0]
         score = columns_to_score[reference_column][0]
         try:
+            s1 = data1
+            s2 = df2.iloc[score[2]].copy()
+            # TODO: make configurable: use col from first, col from second or use both
+            # common_cols = s1.index.intersection(s2.index).tolist()
+            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
+            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
             if score[1] == 100:
                 exact_matches.append((data1, score))
+                res = pd.concat([s1, s2], join="inner")
+                merged_exact_series.append(res)
             elif score[1] >= similarity_above:
                 suggested_matches.append((data1, score))
+                res = pd.concat([s1, s2], join="inner")
+                merged_suggested_series.append(res)
             elif score[1] >= similarity_cutoff:
                 potential_matches.append((data1, score))
                 continue
@@ -210,33 +253,37 @@ def merge():
         except TypeError:
             continue
         pass
+    merged_exact_df = pd.DataFrame(merged_exact_series)
+    merged_suggested_df = pd.DataFrame(merged_suggested_series)
+    merged_df = pd.concat([merged_exact_df, merged_suggested_df])
 
-    exact_matches_series = [t[0] for t in exact_matches]
-    suggested_matches_series = [t[0] for t in suggested_matches]
+    # exact_matches_series = [t[0] for t in exact_matches]
+    # suggested_matches_series = [t[0] for t in suggested_matches]
     potential_matches_series = [t[0] for t in potential_matches]
     no_matches_series = [t[0] for t in no_matches]
     for column in columns:
         from_col = column["from_"]
         into_col = column["into_"]
         for row in (
-            exact_matches_series
-            + suggested_matches_series
-            + potential_matches_series
+            # exact_matches_series
+            # + suggested_matches_series
+            potential_matches_series
             + no_matches_series
         ):
             row.rename({from_col: into_col}, inplace=True)
 
-    result_series = (
-        exact_matches_series
-        + suggested_matches_series
-        + no_matches_series
-        + potential_matches_series
-    )
-    result_df = pd.DataFrame(result_series)
-    exact_matches_df = pd.DataFrame(exact_matches_series)
-    suggested_matches_df = pd.DataFrame(suggested_matches_series)
+    # result_series = (
+    #     exact_matches_series
+    #     + suggested_matches_series
+    #     + no_matches_series
+    #     + potential_matches_series
+    # )
+    # result_df = pd.DataFrame(result_series)
+    # exact_matches_df = pd.DataFrame(exact_matches_series)
+    # suggested_matches_df = pd.DataFrame(suggested_matches_series)
     potential_matches_df = pd.DataFrame(potential_matches_series)
     no_matches_df = pd.DataFrame(no_matches_series)
+    no_matches_df = pd.concat([no_matches_df, potential_matches_df])
     breakpoint()
     analytics = {
         "exact_matches": len(exact_matches),
@@ -251,20 +298,20 @@ def merge():
         + len(no_matches),
         "df2 size": len(df2),
         "df1 size": len(df1),
-        "result_df size": len(result_df),
+        "merged_df size": len(merged_df),
     }
     import pprint
 
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(analytics)
-    df = result_df
+    df = merged_df
 
     print("Saving to file...")
     DataSource.save_to_file(df, Config())
 
     for df, name in (
-        (exact_matches_df, "exact"),
-        (suggested_matches_df, "suggested"),
+        # (exact_matches_df, "exact"),
+        # (suggested_matches_df, "suggested"),
         (potential_matches_df, "potential"),
         (no_matches_df, "no"),
     ):
