@@ -124,7 +124,6 @@ def merge():
             similarity_above = column["similarity"]["above"]
             similarity_cutoff = column["similarity"]["cutoff"]
             is_reference = column.get("is_reference", False)
-
             use_processor = (
                 utils.default_process
                 if (
@@ -182,7 +181,18 @@ def merge():
 
     print('[df2] Traversing columns: "', columns)
     sorted_exact_matches = sorted(exact_matches, key=lambda x: x[1][2])
-    keys_to_match = {t2[2]: (t1, t2) for t1, t2 in sorted_exact_matches}
+    sorted_suggested_matches = sorted(suggested_matches, key=lambda x: x[1][2])
+    # sorted_potential_matches = sorted(potential_matches, key=lambda x: x[1][2])
+    # sorted_no_matches = sorted(no_matches, key=lambda x: x[1][2])
+    keys_to_match = {
+        t2[2]: (t1, t2)
+        for t1, t2 in (
+            sorted_exact_matches
+            + sorted_suggested_matches
+            # + sorted_potential_matches
+            # + sorted_no_matches
+        )
+    }
     skipped = 0
     for idx, data1 in df1.iterrows():
         if idx in keys_to_match.keys():
@@ -257,17 +267,17 @@ def merge():
     merged_suggested_df = pd.DataFrame(merged_suggested_series)
     merged_df = pd.concat([merged_exact_df, merged_suggested_df])
 
-    # exact_matches_series = [t[0] for t in exact_matches]
-    # suggested_matches_series = [t[0] for t in suggested_matches]
+    exact_matches_series = [t[0] for t in exact_matches]
+    suggested_matches_series = [t[0] for t in suggested_matches]
     potential_matches_series = [t[0] for t in potential_matches]
     no_matches_series = [t[0] for t in no_matches]
     for column in columns:
         from_col = column["from_"]
         into_col = column["into_"]
         for row in (
-            # exact_matches_series
-            # + suggested_matches_series
-            potential_matches_series
+            exact_matches_series
+            + suggested_matches_series
+            + potential_matches_series
             + no_matches_series
         ):
             row.rename({from_col: into_col}, inplace=True)
@@ -279,8 +289,8 @@ def merge():
     #     + potential_matches_series
     # )
     # result_df = pd.DataFrame(result_series)
-    # exact_matches_df = pd.DataFrame(exact_matches_series)
-    # suggested_matches_df = pd.DataFrame(suggested_matches_series)
+    exact_matches_df = pd.DataFrame(exact_matches_series)
+    suggested_matches_df = pd.DataFrame(suggested_matches_series)
     potential_matches_df = pd.DataFrame(potential_matches_series)
     no_matches_df = pd.DataFrame(no_matches_series)
     no_matches_df = pd.concat([no_matches_df, potential_matches_df])
@@ -310,8 +320,8 @@ def merge():
     DataSource.save_to_file(df, Config())
 
     for df, name in (
-        # (exact_matches_df, "exact"),
-        # (suggested_matches_df, "suggested"),
+        (exact_matches_df, "exact"),
+        (suggested_matches_df, "suggested"),
         (potential_matches_df, "potential"),
         (no_matches_df, "no"),
     ):
