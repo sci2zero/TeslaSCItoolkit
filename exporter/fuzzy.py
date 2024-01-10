@@ -77,11 +77,11 @@ def merge():
             "into_": "Authors",
             "similarity": {"above": 80, "cutoff": 40, "preprocess": True},
         },
-        # {
-        #     "from_": "Year",
-        #     "into_": "Publication Year",
-        #     "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
-        # },
+        {
+            "from_": "Year",
+            "into_": "Publication Year",
+            "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
+        },
         {
             "from_": "DOI",
             "into_": "DOI",
@@ -103,6 +103,16 @@ def merge():
     if config.get("drop_duplicates"):
         df1.drop_duplicates(inplace=True)
         df2.drop_duplicates(inplace=True)
+
+    for column in columns:
+        from_col = column["from_"]
+        into_col = column["into_"]
+        similarity = column["similarity"]
+        if similarity.get("preprocess", None) is None:
+            continue
+        if similarity.get("preprocess", None) is True:
+            df1[into_col] = df1[into_col].astype(str)
+            df2[from_col] = df2[from_col].astype(str)
 
     # TODO: validate if columns are present in df1 and df2
 
@@ -294,7 +304,6 @@ def merge():
     potential_matches_df = pd.DataFrame(potential_matches_series)
     no_matches_df = pd.DataFrame(no_matches_series)
     no_matches_df = pd.concat([no_matches_df, potential_matches_df])
-    breakpoint()
     analytics = {
         "exact_matches": len(exact_matches),
         "suggested_matches": len(suggested_matches),
@@ -314,6 +323,7 @@ def merge():
 
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(analytics)
+    breakpoint()
     df = merged_df
 
     print("Saving to file...")
