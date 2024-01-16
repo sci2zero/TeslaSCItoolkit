@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 import pandas as pd
 from rapidfuzz import fuzz, process, utils
@@ -7,6 +8,13 @@ from exporter.types import FuzzyColumnCandidates, MatchesPerColumn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
+
+
+class MergeState(Enum):
+    EXACT = 0
+    SUGGESTED = 1
+    POTENTIAL = 2
+    NO_MATCH = 3
 
 
 def suggest():
@@ -60,13 +68,17 @@ def suggest():
     print("Matched columns: ", matched_columns)
 
 
+def _get_reference_column(columns):
+    return next(filter(lambda col: col.get("is_reference", False), columns), None)
+
+
 def merge():
     columns = [
         {
             "from_": "Title",
             "into_": "Article Title",
             "similarity": {
-                "above": 95,
+                "above": 90,
                 "cutoff": 85,
                 "preprocess": True,
             },
@@ -75,7 +87,7 @@ def merge():
         {
             "from_": "Authors",
             "into_": "Authors",
-            "similarity": {"above": 80, "cutoff": 40, "preprocess": True},
+            "similarity": {"above": 40, "cutoff": 30, "preprocess": True},
         },
         {
             "from_": "Year",
@@ -90,8 +102,13 @@ def merge():
         {
             "from_": "Source title",
             "into_": "Source Title",
-            "similarity": {"above": 95, "cutoff": 90, "preprocess": True},
+            "similarity": {"above": 20, "cutoff": 10, "preprocess": True},
         },
+        # {
+        #     "from_": "Document Type",
+        #     "into_": "Document Type",
+        #     "similarity": {"above": 100, "cutoff": 100, "preprocess": True}, # TODO: neeed equivalence class
+        # },
     ]
 
     config = {"strategy": "", "drop_duplicates": False}
@@ -115,7 +132,7 @@ def merge():
             df2[from_col] = df2[from_col].astype(str)
 
     # TODO: validate if columns are present in df1 and df2
-
+    # TODO: auto-determine if column can be nullable, this useful for DOI or Year columns where 100% match is expected
     exact_matches = []
     suggested_matches = []
     potential_matches = []
@@ -126,66 +143,66 @@ def merge():
     # unmerged_no_matches_series = []
     common_cols = df1.columns.intersection(df2.columns).tolist()
     print('[df1] Traversing columns: "', columns)
+    reference_column = _get_reference_column(columns)
     for _, data2 in df2.iterrows():
-        columns_to_score = {}
+        row_states = []  # [exact, suggested, potential, no]
+        score = process.extractOne(
+            data2[reference_column["from_"]],
+            df1[reference_column["into_"]],
+            scorer=fuzz.QRatio,
+            processor=utils.default_process,
+        )
+        s2 = df1.iloc[score[2]].copy()
         for column in columns:
             from_col = column["from_"]
             into_col = column["into_"]
             similarity_above = column["similarity"]["above"]
             similarity_cutoff = column["similarity"]["cutoff"]
-            is_reference = column.get("is_reference", False)
-            use_processor = (
-                utils.default_process
-                if (
-                    column["similarity"].get("preprocess", None) is None
-                    or column["similarity"].get("preprocess", None) is True
-                )
-                else None
-            )
-            score = process.extractOne(
-                data2[from_col],
-                df1[into_col],
-                scorer=fuzz.QRatio,
-                processor=use_processor,
-            )
-            columns_to_score.setdefault((from_col, into_col), []).append(score)
-            try:
-                if score[1] == 100:
-                    continue
-                if score[1] >= similarity_above:
-                    continue
-                if score[1] >= similarity_cutoff and not is_reference:
-                    continue
-                break
-            except TypeError:
+            if (
+                pd.isna(data2[from_col])
+                or data2[from_col] == "nan"
+                or pd.isna(s2[into_col])
+                or s2[into_col] == "nan"
+            ):
                 continue
-        reference_column = [
-            (column["from_"], column["into_"])
-            for column in columns
-            if column.get("is_reference")
-        ][0]
-        score = columns_to_score[reference_column][0]
+
+            ratio = fuzz.QRatio(
+                data2[from_col], s2[into_col], processor=utils.default_process
+            )
+            if score[1] == 100 and ratio < 100 and from_col == "Document Type":
+                breakpoint()
+            if ratio == 100:
+                row_states.append(MergeState.EXACT)
+                continue
+            if ratio >= similarity_above:
+                row_states.append(MergeState.SUGGESTED)
+                continue
+            if ratio >= similarity_cutoff:
+                row_states.append(MergeState.POTENTIAL)
+                continue
+            row_states.append(MergeState.NO_MATCH)
+
         try:
             s1 = data2
-            s2 = df1.iloc[score[2]].copy()
-            # TODO: make configurable: use col from first, col from second or use both
-            # common_cols = s1.index.intersection(s2.index).tolist()
+            if MergeState.NO_MATCH in row_states:
+                no_matches.append((data2, score))
+                continue
+            if MergeState.POTENTIAL in row_states:
+                potential_matches.append((data2, score))
+                continue
+
             s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
             s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
-            if score[1] == 100:
-                exact_matches.append((data2, score))
-                res = pd.concat([s1, s2], join="inner")
-                merged_exact_series.append(res)
-            elif score[1] >= similarity_above:
+
+            if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data2, score))
                 res = pd.concat([s1, s2], join="inner")
                 merged_suggested_series.append(res)
-            elif score[1] >= similarity_cutoff:
-                potential_matches.append((data2, score))
                 continue
-            elif score[1] < similarity_cutoff:
-                no_matches.append((data2, score))
-                continue
+
+            exact_matches.append((data2, score))
+            res = pd.concat([s1, s2], join="inner")
+            merged_exact_series.append(res)
         except TypeError:
             continue
 
@@ -209,67 +226,65 @@ def merge():
             skipped += 1
             # already matched
             continue
-        columns_to_score = {}
+        row_states = []  # [exact, suggested, potential, no]
+        score = process.extractOne(
+            data1[reference_column["into_"]],
+            df2[reference_column["from_"]],
+            scorer=fuzz.QRatio,
+            processor=utils.default_process,
+        )
+        s2 = df2.iloc[score[2]].copy()
         for column in columns:
             from_col = column["from_"]
             into_col = column["into_"]
             similarity_above = column["similarity"]["above"]
             similarity_cutoff = column["similarity"]["cutoff"]
-            is_reference = column.get("is_reference", False)
-
-            use_processor = (
-                utils.default_process
-                if (
-                    column["similarity"].get("preprocess", None) is None
-                    or column["similarity"].get("preprocess", None) is True
-                )
-                else None
-            )
-            score = process.extractOne(
-                data1[into_col],
-                df2[from_col],
-                scorer=fuzz.QRatio,
-                processor=use_processor,
-            )
-
-            columns_to_score.setdefault((into_col, from_col), []).append(score)
-            try:
-                if score[1] == 100:
-                    continue
-                if score[1] >= similarity_above:
-                    continue
-                if score[1] >= similarity_cutoff and not is_reference:
-                    continue
-                break
-            except TypeError:
+            if (
+                pd.isna(data1[into_col])
+                or data1[into_col] == "nan"
+                or pd.isna(s2[from_col])
+                or s2[from_col] == "nan"
+            ):
                 continue
-        reference_column = [
-            (column["into_"], column["from_"])
-            for column in columns
-            if column.get("is_reference")
-        ][0]
-        score = columns_to_score[reference_column][0]
+
+            ratio = fuzz.QRatio(
+                data1[into_col], s2[from_col], processor=utils.default_process
+            )
+            if ratio == 100:
+                row_states.append(MergeState.EXACT)
+                continue
+            if ratio >= similarity_above:
+                row_states.append(MergeState.SUGGESTED)
+                continue
+            if ratio >= similarity_cutoff:
+                row_states.append(MergeState.POTENTIAL)
+                continue
+            row_states.append(MergeState.NO_MATCH)
+
         try:
             s1 = data1
-            s2 = df2.iloc[score[2]].copy()
-            # TODO: make configurable: use col from first, col from second or use both
-            # common_cols = s1.index.intersection(s2.index).tolist()
             s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
             s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
-            if score[1] == 100:
-                exact_matches.append((data1, score))
-                res = pd.concat([s1, s2], join="inner")
-                merged_exact_series.append(res)
-            elif score[1] >= similarity_above:
+
+            if MergeState.NO_MATCH in row_states:
+                no_matches.append((data1, score))
+                continue
+            if MergeState.POTENTIAL in row_states:
+                potential_matches.append((data1, score))
+                continue
+
+            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
+            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
+
+            if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data1, score))
                 res = pd.concat([s1, s2], join="inner")
                 merged_suggested_series.append(res)
-            elif score[1] >= similarity_cutoff:
-                potential_matches.append((data1, score))
                 continue
-            elif score[1] < similarity_cutoff:
-                no_matches.append((data1, score))
-                continue
+
+            exact_matches.append((data1, score))
+            res = pd.concat([s1, s2], join="inner")
+            merged_exact_series.append(res)
         except TypeError:
             continue
         pass
@@ -304,6 +319,7 @@ def merge():
     potential_matches_df = pd.DataFrame(potential_matches_series)
     no_matches_df = pd.DataFrame(no_matches_series)
     no_matches_df = pd.concat([no_matches_df, potential_matches_df])
+
     analytics = {
         "exact_matches": len(exact_matches),
         "suggested_matches": len(suggested_matches),
@@ -318,6 +334,9 @@ def merge():
         "df2 size": len(df2),
         "df1 size": len(df1),
         "merged_df size": len(merged_df),
+        "duplicates in merged_df": len(
+            merged_df[merged_df.duplicated(subset="Title", keep="first")]
+        ),
     }
     import pprint
 
