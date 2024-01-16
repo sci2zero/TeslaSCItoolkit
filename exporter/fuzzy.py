@@ -139,8 +139,6 @@ def merge():
     no_matches = []
     merged_exact_series = []
     merged_suggested_series = []
-    # unmerged_potential_series = []
-    # unmerged_no_matches_series = []
     common_cols = df1.columns.intersection(df2.columns).tolist()
     print('[df1] Traversing columns: "', columns)
     reference_column = _get_reference_column(columns)
@@ -209,8 +207,7 @@ def merge():
     print('[df2] Traversing columns: "', columns)
     sorted_exact_matches = sorted(exact_matches, key=lambda x: x[1][2])
     sorted_suggested_matches = sorted(suggested_matches, key=lambda x: x[1][2])
-    # sorted_potential_matches = sorted(potential_matches, key=lambda x: x[1][2])
-    # sorted_no_matches = sorted(no_matches, key=lambda x: x[1][2])
+
     keys_to_match = {
         t2[2]: (t1, t2)
         for t1, t2 in (
@@ -307,13 +304,6 @@ def merge():
         ):
             row.rename({from_col: into_col}, inplace=True)
 
-    # result_series = (
-    #     exact_matches_series
-    #     + suggested_matches_series
-    #     + no_matches_series
-    #     + potential_matches_series
-    # )
-    # result_df = pd.DataFrame(result_series)
     exact_matches_df = pd.DataFrame(exact_matches_series)
     suggested_matches_df = pd.DataFrame(suggested_matches_series)
     potential_matches_df = pd.DataFrame(potential_matches_series)
