@@ -72,6 +72,20 @@ def _get_reference_column(columns):
     return next(filter(lambda col: col.get("is_reference", False), columns), None)
 
 
+def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
+    remove = preprocess_config.get("remove", None)
+    replace = preprocess_config.get("replace", None)
+    truncate_after = preprocess_config.get("truncate_after", None)
+    if remove is not None:
+        pass
+    if replace is not None:
+        df2[from_col] = df2[from_col].replace(replace)
+    if truncate_after is not None:
+        for truncate_str in truncate_after:
+            df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
+    pass
+
+
 def merge():
     columns = [
         {
@@ -79,10 +93,14 @@ def merge():
             "into_": "Article Title",
             "similarity": {
                 "above": 90,
-                "cutoff": 85,
+                "cutoff": 45,
                 "preprocess": True,
             },
             "is_reference": True,
+            "preprocess": {
+                # "remove": ["the", "a", "an", "of", "in", "on", "for", "and", "or", "to"], # todo: remove
+                "truncate_after": ["; "]
+            }
         },
         {
             "from_": "Authors",
@@ -99,15 +117,27 @@ def merge():
             "into_": "DOI",
             "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
         },
-        {
-            "from_": "Source title",
-            "into_": "Source Title",
-            "similarity": {"above": 20, "cutoff": 10, "preprocess": True},
-        },
+        # {
+        #     "from_": "Source title",
+        #     "into_": "Source Title",
+        #     "similarity": {"above": 20, "cutoff": 10, "preprocess": True},
+        # },
         # {
         #     "from_": "Document Type",
         #     "into_": "Document Type",
-        #     "similarity": {"above": 100, "cutoff": 100, "preprocess": True}, # TODO: neeed equivalence class
+        #     "similarity": {
+        #         "above": 100,
+        #         "cutoff": 100,
+        #         "preprocess": True,
+        #     },
+        #     "preprocess": {
+        #         "replace": {
+        #             "Conference paper": "Proceedings Paper",
+        #             "Editorial": "Editorial Material",
+        #             "Article in press": "Article; Early Access",
+        #             "Book chapter": "Book Review",
+        #         }
+        #     },
         # },
     ]
 
@@ -130,6 +160,9 @@ def merge():
         if similarity.get("preprocess", None) is True:
             df1[into_col] = df1[into_col].astype(str)
             df2[from_col] = df2[from_col].astype(str)
+        if column.get("preprocess", None) is not None:
+            preprocess_config = column["preprocess"]
+            _preprocess_data(df1, df2, from_col, into_col, preprocess_config)
 
     # TODO: validate if columns are present in df1 and df2
     # TODO: auto-determine if column can be nullable, this useful for DOI or Year columns where 100% match is expected
