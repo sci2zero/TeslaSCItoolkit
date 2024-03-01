@@ -1,0 +1,51 @@
+join:
+  similarity: yes
+  similarity_config:
+    merge:
+      columns:
+        - from_: "Title"
+          into_: "Article Title"
+          similarity:
+            above: 90
+            cutoff: 45
+            preprocess: yes
+          is_reference: yes
+          preprocess:
+            truncate_after:
+              - "; "
+        - from_: "Authors"
+          into_: "Authors"
+          similarity:
+            above: 40
+            cutoff: 30
+            preprocess: yes
+        - from_: "Year"
+          into_: "Publication Year"
+          similarity:
+            above: 100
+            cutoff: 100
+            preprocess: yes
+        - from_: "DOI"
+          into_: "DOI"
+          similarity:
+            above: 100
+            cutoff: 100
+            preprocess: yes
+        - from_: "Source title"
+          into_: "Source Title"
+          similarity:
+            above: 20
+            cutoff: 10
+            preprocess: yes
+        - from_: "Document Type"
+          into_: "Document Type"
+          similarity:
+            above: 100
+            cutoff: 100
+            preprocess: yes
+          preprocess:
+            replace:
+              "Conference Paper": "Proceedings Paper"
+              "Editorial": "Editorial Material"
+              "Article in press": "Article; Early Access"
+              "Book chapter": "Book Review"

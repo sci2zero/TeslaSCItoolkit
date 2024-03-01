@@ -1,0 +1,10 @@
+join:
+  src:
+  - simple.csv
+  - simple-join.csv
+  columns:
+    - "email"
+    - "salary"
+  how: "inner"
+data:
+  dest: exported-join.csv
