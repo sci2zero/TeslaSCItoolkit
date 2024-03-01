@@ -83,71 +83,23 @@ def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
     if truncate_after is not None:
         for truncate_str in truncate_after:
             df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
-    pass
-
 
 def merge():
-    columns = [
-        {
-            "from_": "Title",
-            "into_": "Article Title",
-            "similarity": {
-                "above": 90,
-                "cutoff": 45,
-                "preprocess": True,
-            },
-            "is_reference": True,
-            "preprocess": {
-                # "remove": ["the", "a", "an", "of", "in", "on", "for", "and", "or", "to"], # todo: remove
-                "truncate_after": ["; "]
-            }
-        },
-        {
-            "from_": "Authors",
-            "into_": "Authors",
-            "similarity": {"above": 40, "cutoff": 30, "preprocess": True},
-        },
-        {
-            "from_": "Year",
-            "into_": "Publication Year",
-            "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
-        },
-        {
-            "from_": "DOI",
-            "into_": "DOI",
-            "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
-        },
-        # {
-        #     "from_": "Source title",
-        #     "into_": "Source Title",
-        #     "similarity": {"above": 20, "cutoff": 10, "preprocess": True},
-        # },
-        # {
-        #     "from_": "Document Type",
-        #     "into_": "Document Type",
-        #     "similarity": {
-        #         "above": 100,
-        #         "cutoff": 100,
-        #         "preprocess": True,
-        #     },
-        #     "preprocess": {
-        #         "replace": {
-        #             "Conference paper": "Proceedings Paper",
-        #             "Editorial": "Editorial Material",
-        #             "Article in press": "Article; Early Access",
-        #             "Book chapter": "Book Review",
-        #         }
-        #     },
-        # },
-    ]
-
-    config = {"strategy": "", "drop_duplicates": False}
     data = DataSource.get()
+    config = Config()
+
+    if "similarity_config" not in config.content.get("join", {}).keys():
+        logging.info(
+            "No similarity_config to apply to the dataset. Are you using a config file that has similarity_config?"
+        )
+        return
+
+    columns = config.content['join']['similarity_config']['merge']['columns']
 
     df1 = data.join_sources.sources[0].df
     df2 = data.join_sources.sources[1].df
 
-    if config.get("drop_duplicates"):
+    if config.content['join']['similarity_config']['merge'].get("drop_duplicates"):
         df1.drop_duplicates(inplace=True)
         df2.drop_duplicates(inplace=True)
 
@@ -200,8 +152,6 @@ def merge():
             ratio = fuzz.QRatio(
                 data2[from_col], s2[into_col], processor=utils.default_process
             )
-            if score[1] == 100 and ratio < 100 and from_col == "Document Type":
-                breakpoint()
             if ratio == 100:
                 row_states.append(MergeState.EXACT)
                 continue
@@ -365,11 +315,7 @@ def merge():
 
     pp = pprint.PrettyPrinter(indent=4)
     pp.pprint(analytics)
-    breakpoint()
     df = merged_df
-
-    print("Saving to file...")
-    DataSource.save_to_file(df, Config())
 
     for df, name in (
         (exact_matches_df, "exact"),
