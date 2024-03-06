@@ -1,9 +1,10 @@
 from enum import Enum
 import logging
 import pandas as pd
+from pathlib import Path
 from rapidfuzz import fuzz, process, utils
 
-from exporter.scripts.context import Config, DataSource
+from exporter.scripts.context import Config, DataSource, JoinSource, Reader
 from exporter.types import FuzzyColumnCandidates, MatchesPerColumn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -84,22 +85,28 @@ def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
         for truncate_str in truncate_after:
             df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
 
-def merge():
-    data = DataSource.get()
-    config = Config()
 
+def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
+    config = Config()
     if "similarity_config" not in config.content.get("join", {}).keys():
         logging.info(
             "No similarity_config to apply to the dataset. Are you using a config file that has similarity_config?"
         )
         return
 
-    columns = config.content['join']['similarity_config']['merge']['columns']
+    columns = config.content["join"]["similarity_config"]["merge"]["columns"]
 
-    df1 = data.join_sources.sources[0].df
-    df2 = data.join_sources.sources[1].df
+    if first_src is not None and second_src is not None:
+        first_src = Path(first_src)
+        second_src = Path(second_src)
+        df1 = JoinSource(Reader(first_src).load(), None).df
+        df2 = JoinSource(Reader(second_src).load(), None).df
+    else:
+        data = DataSource.get()
+        df1 = data.join_sources.sources[0].df
+        df2 = data.join_sources.sources[1].df
 
-    if config.content['join']['similarity_config']['merge'].get("drop_duplicates"):
+    if config.content["join"]["similarity_config"]["merge"].get("drop_duplicates"):
         df1.drop_duplicates(inplace=True)
         df2.drop_duplicates(inplace=True)
 
@@ -317,6 +324,7 @@ def merge():
     pp.pprint(analytics)
     df = merged_df
 
+    path_override = Path(dest) if dest is not None else None
     for df, name in (
         (exact_matches_df, "exact"),
         (suggested_matches_df, "suggested"),
@@ -324,5 +332,8 @@ def merge():
         (no_matches_df, "no"),
     ):
         DataSource.save_to_file(
-            df, Config(), name_override=f"config-ftn-{name}-matches.xls"
+            df,
+            Config(),
+            name_override=f"config-{name}-matches.xls",
+            path_override=path_override,
         )

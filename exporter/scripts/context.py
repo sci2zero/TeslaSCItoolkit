@@ -5,8 +5,6 @@ import attrs
 import pandas as pd
 import yaml
 
-# TODO: move over to separate .py
-
 CONFIG_HOME = ".exporter"
 CONFIG_NAME = os.environ.get("EXPORTER_CONFIG_NAME") or "config.yml"
 
@@ -14,9 +12,11 @@ CONFIG_NAME = os.environ.get("EXPORTER_CONFIG_NAME") or "config.yml"
 class Data(object):
     """Base class for data sources."""
 
-    def __init__(self, path: str) -> None:
-        self.path = Path.cwd() / Path(CONFIG_HOME) / Path(path)
-        # Check if the file exists
+    def __init__(self, path: Path | str) -> None:
+        if isinstance(path, Path):
+            self.path = path
+        else:
+            self.path = Path.cwd() / Path(CONFIG_HOME) / Path(path)
         if not self.path.exists():
             raise FileNotFoundError(f"File '{self.path}' not found.")
 
@@ -69,7 +69,7 @@ class DataSource(object):
             raise ValueError(
                 "You cannot specify both a data source and join sources in the config file."
             )
-        if join_sources:
+        if join_sources.get("src", None) is not None:
             self.join_sources = JoinSources(
                 sources=[
                     JoinSource(
@@ -88,14 +88,16 @@ class DataSource(object):
             return reader
 
     @classmethod
-    def save_to_file(cls, df, config, name_override=None) -> None:
+    def save_to_file(cls, df, config, name_override=None, path_override=None) -> None:
         """Saves the data source."""
         if name_override is None:
             dest_name = config.content.get("data", None).get("dest", None)
         else:
             dest_name = name_override
-        dest_path = Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
-
+        if path_override is not None:
+            dest_path = Path(path_override) / Path(dest_name)
+        else:
+            dest_path = Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
         if not dest_path:
             raise ValueError("No data destination found in the config file.")
         try:
