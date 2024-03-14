@@ -5,8 +5,8 @@ import attrs
 import pandas as pd
 import yaml
 
-CONFIG_HOME = ".exporter"
-CONFIG_NAME = os.environ.get("EXPORTER_CONFIG_NAME") or "config.yml"
+CONFIG_HOME = ".tesci"
+CONFIG_NAME = os.environ.get("TESCI_CONFIG_NAME") or "config.yml"
 
 
 class Data(object):
