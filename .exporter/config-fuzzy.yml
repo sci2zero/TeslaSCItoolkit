@@ -1,9 +1,0 @@
-join:
-  src:
-  - scopus.csv
-  - web-of-science.xls
-  - openalex.csv
-  how: "inner"
-  fuzzy: true
-data:
-  dest: exported-fuzzy.xls
