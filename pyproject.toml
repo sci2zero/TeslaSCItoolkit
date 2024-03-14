@@ -1,6 +1,22 @@
 [project]
 name = "tesci"
-version = "0.0.1"
+version = "1.0.0"
+description = "A toolkit to aid in scientific mapping"
+readme = "README.md"
+keywords = ["scientific mapping", "merging data sources"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+    "License :: OSI Approved :: MIT License",
+    "License :: OSI Approved :: Apache Software License",
+    "Natural Language :: English",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
 requires-python = ">=3.11"
 dependencies = [
     "click>=8.1",
