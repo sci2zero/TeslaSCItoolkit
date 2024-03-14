@@ -1,6 +1,6 @@
 import click
 
-from exporter.scripts.context import Config as config
+from tesci.scripts.context import Config as config
 
 
 @click.command()

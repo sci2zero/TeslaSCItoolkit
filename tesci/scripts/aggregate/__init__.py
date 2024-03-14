@@ -1,6 +1,6 @@
 import click
 
-import exporter.transformations as transformations
+import tesci.transformations as transformations
 
 AGGREGATE_FUNCTIONS = ["count", "distinct", "max", "min", "sum", "avg"]
 

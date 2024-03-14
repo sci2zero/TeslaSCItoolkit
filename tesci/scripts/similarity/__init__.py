@@ -1,6 +1,6 @@
 import click
 from pathlib import Path
-import exporter.similarity as similarity
+import tesci.similarity as similarity
 
 
 @click.group(name="similarity")

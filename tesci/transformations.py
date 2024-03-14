@@ -4,8 +4,8 @@ import attrs
 
 from typing import Any
 from rapidfuzz import process, fuzz, utils
-from exporter.scripts.context import DataSource, Config
-from exporter.types import Aggregate, FuzzyColumnCandidates, MatchesPerColumn
+from tesci.scripts.context import DataSource, Config
+from tesci.types import Aggregate, FuzzyColumnCandidates, MatchesPerColumn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)

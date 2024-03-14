@@ -1,7 +1,7 @@
 import click
 import os
 
-import exporter.release as publish
+import tesci.release as publish
 
 
 @click.command()

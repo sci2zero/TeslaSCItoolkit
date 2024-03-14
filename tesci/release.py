@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 from enum import Enum
 from github import Auth, Github
 
-from exporter.scripts.context import Config
+from tesci.scripts.context import Config
 
 
 class Strategy(Enum):

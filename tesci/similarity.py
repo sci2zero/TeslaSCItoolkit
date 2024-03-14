@@ -4,8 +4,8 @@ import pandas as pd
 from pathlib import Path
 from rapidfuzz import fuzz, process, utils
 
-from exporter.scripts.context import Config, DataSource, JoinSource, Reader
-from exporter.types import FuzzyColumnCandidates, MatchesPerColumn
+from tesci.scripts.context import Config, DataSource, JoinSource, Reader
+from tesci.types import FuzzyColumnCandidates, MatchesPerColumn
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)

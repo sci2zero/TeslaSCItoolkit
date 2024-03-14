@@ -1,5 +1,5 @@
 [project]
-name = "exporter"
+name = "tesci"
 version = "0.0.1"
 requires-python = ">=3.11"
 dependencies = [
@@ -16,7 +16,7 @@ dependencies = [
 ]
 
 [project.scripts]
-exporter = "exporter.scripts.exporter:cli"
+tesci = "tesci.scripts.tesci:cli"
 
 [build-system]
 requires = ["setuptools"]
