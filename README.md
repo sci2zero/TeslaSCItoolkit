@@ -2,7 +2,7 @@
 
 ## An interactive toolkit for merging data from multiple citation databases
 
-[![PyPI](https://img.shields.io/pypi/v/tesci.svg)](https://img.shields.io/pypi/v/tesci.svg)
+[![PyPI](https://img.shields.io/pypi/v/tesci.svg)](https://pypi.org/project/tesci/)
 [![License-1]( https://img.shields.io/badge/License-Apache-blue.svg)](https://img.shields.io/badge/License-Apache-blue.svg)
 [![License-2]( https://img.shields.io/badge/License-MIT-green.svg)](https://img.shields.io/badge/License-MIT-green.svg)
 [![Python-Versions](https://img.shields.io/pypi/pyversions/tesci.svg)](https://img.shields.io/pypi/pyversions/tesci.svg)
