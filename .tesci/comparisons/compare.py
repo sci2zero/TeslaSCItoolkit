@@ -27,7 +27,7 @@ def calculate_results(true_positive, false_positive, false_negative):
 
 def compare_results(df1, df2):
     titles_df1 = set(df1["Title"].apply(utils.default_process))  # | set(df1["Article Title"])
-    titles_df2 = set(df2["Title"].apply(utils.default_process))  # | set(df2["Article Title"])
+    titles_df2 = set(df2["title"].apply(utils.default_process))  # | set(df2["Article Title"])
     # titles_df1_processed = set(df1["Title"].apply(utils.default_process))
     # titles_df2_processed = set(df2["Title"].apply(utils.default_process))
     # duplicates_in_df2 = df2[df2.duplicated(subset="Title", keep="first")]
@@ -37,7 +37,7 @@ def compare_results(df1, df2):
     false_positives = titles_df2.difference(titles_df1)
     # False Negatives (FN) - Titles in df1 that are not in df2
     false_negatives = titles_df1.difference(
-        (set(df2["Title"].apply(utils.default_process)) | set(df2["Article Title"].apply(utils.default_process)))
+        (set(df2["title"].apply(utils.default_process)))# | set(df2["Article Title"].apply(utils.default_process)))
     )
     tp = len(true_positives)
     fp = len(false_positives)
@@ -53,8 +53,8 @@ def compare_results(df1, df2):
 
 
 def main():
-    df1 = pd.read_excel(Path(args.manual))
-    df2 = pd.read_excel(Path(args.automatic))
+    df1 = pd.read_csv(Path(args.manual))
+    df2 = pd.read_csv(Path(args.automatic))
     breakpoint()
     precision, recall, f1, jaccard = compare_results(df1, df2)
     # df1 = pd.read_excel(Path("ftn-manual-notmerged-bibliometrija.xlsx"))
