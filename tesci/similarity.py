@@ -106,6 +106,13 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
         df1 = data.join_sources.sources[0].df
         df2 = data.join_sources.sources[1].df
 
+    df1.rename(columns=str.lower, inplace=True)
+    df2.rename(columns=str.lower, inplace=True)
+
+    for column in columns:
+        column["from_"] = column["from_"].lower()
+        column["into_"] = column["into_"].lower()
+
     if config.content["join"]["similarity_config"]["merge"].get("drop_duplicates"):
         df1.drop_duplicates(inplace=True)
         df2.drop_duplicates(inplace=True)
@@ -299,7 +306,9 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
     potential_matches_df = pd.DataFrame(potential_matches_series)
     no_matches_df = pd.DataFrame(no_matches_series)
     no_matches_df = pd.concat([no_matches_df, potential_matches_df])
-
+    final_df = pd.concat(
+        [exact_matches_df, suggested_matches_df, potential_matches_df, no_matches_df]
+    )
     analytics = {
         "exact_matches": len(exact_matches),
         "suggested_matches": len(suggested_matches),
@@ -315,7 +324,7 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
         "df1 size": len(df1),
         "merged_df size": len(merged_df),
         "duplicates in merged_df": len(
-            merged_df[merged_df.duplicated(subset="Title", keep="first")]
+            merged_df[merged_df.duplicated(subset="title", keep="first")]
         ),
     }
     import pprint
@@ -337,3 +346,4 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
             name_override=f"config-{name}-matches.xls",
             path_override=path_override,
         )
+    DataSource.save_to_file(final_df, Config(), name_override="config-final.xls")
