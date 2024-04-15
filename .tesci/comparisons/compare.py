@@ -26,8 +26,8 @@ def calculate_results(true_positive, false_positive, false_negative):
 
 
 def compare_results(df1, df2):
-    titles_df1 = set(df1["Title"].apply(utils.default_process))  # | set(df1["Article Title"])
-    titles_df2 = set(df2["title"].apply(utils.default_process))  # | set(df2["Article Title"])
+    titles_df1 = set(df1["Title"].astype(str).apply(utils.default_process))  | set(df1["Article Title"].astype(str).apply(utils.default_process))
+    titles_df2 = set(df2["title"].astype(str).apply(utils.default_process)) # | set(df2["Article Title"].astype(str).apply(utils.default_process))
     # titles_df1_processed = set(df1["Title"].apply(utils.default_process))
     # titles_df2_processed = set(df2["Title"].apply(utils.default_process))
     # duplicates_in_df2 = df2[df2.duplicated(subset="Title", keep="first")]
