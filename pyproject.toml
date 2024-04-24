@@ -1,6 +1,6 @@
 [project]
 name = "tesci"
-version = "1.0.0"
+version = "1.0.1"
 description = "A toolkit to aid in scientific mapping"
 readme = "README.md"
 keywords = ["scientific mapping", "merging data sources"]
