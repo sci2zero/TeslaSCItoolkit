@@ -86,6 +86,22 @@ def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
             df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
 
 
+def assert_no_duplicate_columns(from_columns, into_columns):
+    err_msg = ""
+    for col in from_columns:
+        if from_columns.count(col.lower()) > 1:
+            err_msg += f"Duplicate column \"{col.upper()}\" found in 'from' columns.\n"
+    for col in into_columns:
+        if into_columns.count(col.lower()) > 1:
+            err_msg += f"Duplicate column \"{col.upper()}\" found in 'into' columns.\n"
+
+    if len(err_msg) > 0:
+        err_msg += (
+            "\nEnsure that each column in your configuration file is unique in 'from' and 'into'."
+        )
+        raise ValueError(err_msg)
+
+
 def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
     config = Config()
     if "similarity_config" not in config.content.get("join", {}).keys():
@@ -95,6 +111,10 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
         return
 
     columns = config.content["join"]["similarity_config"]["merge"]["columns"]
+
+    from_columns = [col["from_"].lower() for col in columns]
+    into_columns = [col["into_"].lower() for col in columns]
+    assert_no_duplicate_columns(from_columns, into_columns)
 
     if first_src is not None and second_src is not None:
         first_src = Path(first_src)
