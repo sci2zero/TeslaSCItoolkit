@@ -65,6 +65,15 @@ After specifying your configuration choices, merge can then by run with:
 
 where PATH and DIR refer to relative filesystem paths and directories.
 
+## Citing `tesci`
+
+If you find `tesci` useful in your research, please support our work by citing our paper.
+
+Nikolić, D., Ivanović, D., & Ivanović, L. (2024).
+An open-source tool for merging data from multiple citation databases.\
+Scientometrics, 1-23.
+https://doi.org/10.1007/s11192-024-05076-2
+
 ## License
 
 Licensed under either of Apache License, Version 2.0 or MIT license.
