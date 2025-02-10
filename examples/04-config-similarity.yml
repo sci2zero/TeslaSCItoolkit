@@ -1,3 +1,6 @@
+description: >
+  "Combine two citation databases (WoS -> Scopus) using similarity by title, authors, year, DOI, source title, and document type"
+
 join:
   similarity: yes
   similarity_config:

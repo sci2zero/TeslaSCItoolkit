@@ -1,3 +1,6 @@
+description: >
+  "Join two CSV files by email and salary column"
+
 join:
   src:
   - simple.csv
