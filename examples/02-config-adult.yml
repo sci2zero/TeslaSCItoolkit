@@ -1,3 +1,6 @@
+description: >
+  "Create count_hours-per-week_education_income aggregate, sort by count, education and income"
+
 aggregate:
 - alias: count_hours-per-week_education_income
   columns:
