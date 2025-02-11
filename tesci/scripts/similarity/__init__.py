@@ -8,18 +8,11 @@ def similarity_cli():
     pass
 
 @click.option(
-    "-f",
-    "--first-src",
-    type=str,
-    default=None,
-    help="Path to the first data source",
-)
-@click.option(
     "-s",
-    "--second-src",
-    type=str,
+    "--src",
     default=None,
-    help="Path to the second data source",
+    multiple=True,
+    help="Path to the the data sources",
 )
 @click.option(
     "-d",
@@ -29,18 +22,18 @@ def similarity_cli():
     help="Path to the destination of the combined data source",
 )
 @similarity_cli.command()
-def merge(first_src, second_src, dest):
+def merge(src, dest):
     """Merge datasets using similarity matching"""
-    if first_src is not None and not Path(first_src).exists():
-        raise click.UsageError(f"Path {first_src} not found. Does the path specified exist on disk?")
-
-    if second_src is not None and not Path(second_src).exists():
-        raise click.UsageError(f"Path {second_src} not found. Does the path specified exist on disk?")
+    srcs = src
+    if srcs is None or len(srcs) == 0:
+        raise click.UsageError("At least one source path must be specified")
+    for src in srcs:
+        if not Path(src).exists():
+            raise click.UsageError(f"Path {src} not found. Does the path specified exist on disk?")
 
     if dest is not None and not Path(dest).exists():
         raise click.UsageError(f"Path {dest} not found. Does the path specified exist on disk?")
-
-    similarity.merge(first_src, second_src, dest)
+    # similarity.merge(first_src, second_src, dest)
 
 
 @similarity_cli.command()

@@ -61,9 +61,9 @@ Then, specify the configuration used for merging. An example of a configuration 
 
 After specifying your configuration choices, merge can then by run with:
 
-`tesci similarity merge --first-src PATH --second-src PATH --dest DIR`
+`tesci similarity merge --src PATH --src PATH --dest DIR`
 
-where PATH and DIR refer to relative filesystem paths and directories.
+where PATH and DIR refer to relative or absolute filesystem paths and directories.
 
 ## Citing `tesci`
 
