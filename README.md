@@ -27,24 +27,24 @@ To create an aggregation of [`simple.csv`](examples/simple/simple.csv) based on 
 #### 1. Interactive approach
 
 ```properties
-tesci start -d simple.csv -o exported.csv​
-tesci aggregate avg -c salary -a avg_salary​
-tesci aggregate avg -c age -a avg_age​
-tesci apply​
+tesci start -d simple.csv -o exported.csv
+tesci aggregate avg -c salary -a avg_salary
+tesci aggregate avg -c age -a avg_age
+tesci apply
 ```
 
 #### 2. Configuration approach
 
 ```yml
-aggregate:​
-  - alias: avg_salary​
-    column: salary​
-    function: avg​
-  - alias: avg_age​
-    column: age​
-    function: avg​
-data:​
-  dest: exported.csv​
+aggregate:
+  - alias: avg_salary
+      column: salary
+    function: avg
+  - alias: avg_age
+    column: age
+    function: avg
+data:
+  dest: exported.csv
   src: simple.csv
 ```
 
