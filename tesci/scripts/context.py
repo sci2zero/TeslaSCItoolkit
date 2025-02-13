@@ -112,6 +112,19 @@ class DataSource(object):
             print(f"Error while saving the data source: {e}")
             raise
 
+    @classmethod
+    def get_file_path(cls, config, name_override=None, path_override=None) -> Path:
+        """Returns the path to the data source."""
+        if name_override is None:
+            dest_name = config.content.get("data", None).get("dest", None)
+        else:
+            dest_name = name_override
+        if path_override is not None:
+            dest_path = Path(path_override) / Path(dest_name)
+        else:
+            dest_path = Path.cwd() / Path(CONFIG_HOME) / Path(dest_name)
+        return dest_path
+
 
 class Config(object):
     def __init__(self) -> None:
