@@ -24,16 +24,16 @@ def similarity_cli():
 @similarity_cli.command()
 def merge(src, dest):
     """Merge datasets using similarity matching"""
-    srcs = src
-    if srcs is None or len(srcs) == 0:
+    sources = src
+    if sources is None or len(sources) == 0:
         raise click.UsageError("At least one source path must be specified")
-    for src in srcs:
+    for src in sources:
         if not Path(src).exists():
             raise click.UsageError(f"Path {src} not found. Does the path specified exist on disk?")
 
     if dest is not None and not Path(dest).exists():
         raise click.UsageError(f"Path {dest} not found. Does the path specified exist on disk?")
-    # similarity.merge(first_src, second_src, dest)
+    similarity.merge(sources, dest)
 
 
 @similarity_cli.command()

@@ -114,21 +114,26 @@ def merge(sources: list[Path] | None, dest: Path | None):
         if "multi_stage" not in config.content.get("join", {}).keys():
             raise ValueError("More than two sources provided. Please set multi_stage join to True in the config file and add appropriate stage_ prefixes.")
 
+    if config.content.get("join", {}).get("multi_stage", False) and len(sources) == 2:
+        raise ValueError("Two sources provided. Please set multi_stage join to False in the config file and remove stage_ prefixes.")
+
+
     first_src = sources[0]
     second_src = sources[1]
 
-    max_stage_num = _get_multi_stage_nums(config.content.get("join", {}).keys())
+    max_stage_num = _get_multi_stage_nums(config)
 
     if max_stage_num != 1:
+        breakpoint()
         for i in range(0, max_stage_num):
-            if i+1 == max_stage_num:
-                name_override = "config-final.xls"
-            else:
+            if i+1 != max_stage_num:
                 name_override = f"config-stage_{i+1}_merged.xls"
             if i != 0:
                 first_src = sources[i+1]
                 second_src = DataSource.get_file_path(Config(), name_override=name_override)
             _merge_two_sources(first_src, second_src, config, stage=i+1, save_to_disk_name_override=name_override, dest=dest)
+            if i+1 == max_stage_num:
+                name_override = "config-final.xls"
     else:
         _merge_two_sources(first_src, second_src, config, save_to_disk_name_override=None, dest=dest)         
 
@@ -395,17 +400,17 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
             name_override=f"config-{name}-matches.xls",
             path_override=path_override,
         )
-    DataSource.save_to_file(final_df, Config(), name_override="config-final.xls")
+    if save_to_disk_name_override is not None:
+        name_override = save_to_disk_name_override
+    else:
+        name_override = "config-final.xls"
+    DataSource.save_to_file(final_df, Config(), name_override=name_override)
 
 
 def _get_multi_stage_nums(config) -> int:
-    """Multi stages (if any) are nested in similarity_config.merge.stage_* keys. This function returns the maximum stage number."""
+    """
+    Multi stages (if any) are nested in similarity_config.merge.stage_* keys. This function returns the maximum stage number.
+    """
     join_config = config.content.get("join", {})
     stages_config = join_config.get("similarity_config", {}).get("merge", {}).keys()
-    max_stage_num = 1
-    for stage in stages_config:
-        if "stage_" in stage:
-            stage_num = int(stage.split("_")[1])
-            if stage_num > max_stage_num:
-                max_stage_num = stage_num
-    return max_stage_num
+    return max((int(stage.split("_")[1]) for stage in stages_config if "stage_" in stage), default=1)
