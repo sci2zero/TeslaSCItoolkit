@@ -69,6 +69,22 @@ def suggest():
     print("Matched columns: ", matched_columns)
 
 
+def safe_cast_to_str(df, col):
+    if col in df.columns:
+        df[col] = df[col].astype(str)
+
+
+def safe_replace(df, col, replace):
+    if col in df.columns:
+        df[col] = df[col].replace(replace)
+
+
+def safe_truncate(df, col, truncate_after):
+    if col in df.columns:
+        for truncate_str in truncate_after:
+            df[col] = df[col].str.split(truncate_str).str[0]
+
+
 def _get_reference_column(columns):
     return next(filter(lambda col: col.get("is_reference", False), columns), None)
 
@@ -80,10 +96,14 @@ def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
     if remove is not None:
         pass
     if replace is not None:
-        df2[from_col] = df2[from_col].replace(replace)
+        for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
+            safe_replace(df, col, replace)
+        # df2[from_col] = df2[from_col].replace(replace)
     if truncate_after is not None:
-        for truncate_str in truncate_after:
-            df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
+        for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
+            safe_truncate(df, col, truncate_after)
+        # for truncate_str in truncate_after:
+            # df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
 
 
 def assert_no_duplicate_columns(from_columns, into_columns):
@@ -175,11 +195,10 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
         from_col = column["from_"]
         into_col = column["into_"]
         similarity = column["similarity"]
-        if similarity.get("preprocess", None) is None:
-            continue
-        if similarity.get("preprocess", None) is True:
-            df1[into_col] = df1[into_col].astype(str)
-            df2[from_col] = df2[from_col].astype(str)
+        if not similarity.get("preprocess"):
+           continue
+        for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
+            safe_cast_to_str(df, col)
         if column.get("preprocess", None) is not None:
             preprocess_config = column["preprocess"]
             _preprocess_data(df1, df2, from_col, into_col, preprocess_config)
