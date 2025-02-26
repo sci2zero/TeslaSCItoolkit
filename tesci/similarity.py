@@ -98,12 +98,9 @@ def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
     if replace is not None:
         for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
             safe_replace(df, col, replace)
-        # df2[from_col] = df2[from_col].replace(replace)
     if truncate_after is not None:
         for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
             safe_truncate(df, col, truncate_after)
-        # for truncate_str in truncate_after:
-            # df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
 
 
 def assert_no_duplicate_columns(from_columns, into_columns):
@@ -144,7 +141,6 @@ def merge(sources: list[Path] | None, dest: Path | None):
     max_stage_num = _get_multi_stage_nums(config)
 
     if max_stage_num != 1:
-        breakpoint()
         for i in range(0, max_stage_num):
             if i+1 != max_stage_num:
                 name_override = f"config-stage_{i+1}_merged.xls"
@@ -259,18 +255,16 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
                 potential_matches.append((data2, score))
                 continue
 
-            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
-            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
-
             if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data2, score))
-                res = pd.concat([s1, s2], join="inner")
+                res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
                 merged_suggested_series.append(res)
                 continue
 
             exact_matches.append((data2, score))
-            res = pd.concat([s1, s2], join="inner")
+            res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
             merged_exact_series.append(res)
+
         except TypeError:
             continue
 
@@ -330,8 +324,6 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
 
         try:
             s1 = data1
-            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
-            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
 
             if MergeState.NO_MATCH in row_states:
                 no_matches.append((data1, score))
@@ -340,21 +332,20 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
                 potential_matches.append((data1, score))
                 continue
 
-            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
-            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
-
             if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data1, score))
-                res = pd.concat([s1, s2], join="inner")
+                res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
                 merged_suggested_series.append(res)
                 continue
 
             exact_matches.append((data1, score))
-            res = pd.concat([s1, s2], join="inner")
+            res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
             merged_exact_series.append(res)
+
         except TypeError:
             continue
         pass
+
     merged_exact_df = pd.DataFrame(merged_exact_series)
     merged_suggested_df = pd.DataFrame(merged_suggested_series)
     merged_df = pd.concat([merged_exact_df, merged_suggested_df])
