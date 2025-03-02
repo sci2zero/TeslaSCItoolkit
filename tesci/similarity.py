@@ -69,6 +69,22 @@ def suggest():
     print("Matched columns: ", matched_columns)
 
 
+def safe_cast_to_str(df, col):
+    if col in df.columns:
+        df[col] = df[col].astype(str)
+
+
+def safe_replace(df, col, replace):
+    if col in df.columns:
+        df[col] = df[col].replace(replace)
+
+
+def safe_truncate(df, col, truncate_after):
+    if col in df.columns:
+        for truncate_str in truncate_after:
+            df[col] = df[col].str.split(truncate_str).str[0]
+
+
 def _get_reference_column(columns):
     return next(filter(lambda col: col.get("is_reference", False), columns), None)
 
@@ -80,10 +96,11 @@ def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
     if remove is not None:
         pass
     if replace is not None:
-        df2[from_col] = df2[from_col].replace(replace)
+        for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
+            safe_replace(df, col, replace)
     if truncate_after is not None:
-        for truncate_str in truncate_after:
-            df2[from_col] = df2[from_col].str.split(truncate_str).str[0]
+        for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
+            safe_truncate(df, col, truncate_after)
 
 
 def assert_no_duplicate_columns(from_columns, into_columns):
@@ -102,7 +119,7 @@ def assert_no_duplicate_columns(from_columns, into_columns):
         raise ValueError(err_msg)
 
 
-def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
+def merge(sources: list[Path] | None, dest: Path | None):
     config = Config()
     if "similarity_config" not in config.content.get("join", {}).keys():
         logging.info(
@@ -110,7 +127,39 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
         )
         return
 
-    columns = config.content["join"]["similarity_config"]["merge"]["columns"]
+    if len(sources) > 2:
+        if "multi_stage" not in config.content.get("join", {}).keys():
+            raise ValueError("More than two sources provided. Please set multi_stage join to True in the config file and add appropriate stage_ prefixes.")
+
+    if config.content.get("join", {}).get("multi_stage", False) and len(sources) == 2:
+        raise ValueError("Two sources provided. Please set multi_stage join to False in the config file and remove stage_ prefixes.")
+
+
+    first_src = sources[0]
+    second_src = sources[1]
+
+    max_stage_num = _get_multi_stage_nums(config)
+
+    if max_stage_num != 1:
+        for i in range(0, max_stage_num):
+            if i+1 != max_stage_num:
+                name_override = f"config-stage_{i+1}_merged.xls"
+            if i != 0:
+                first_src = sources[i+1]
+                second_src = DataSource.get_file_path(Config(), name_override=name_override)
+            _merge_two_sources(first_src, second_src, config, stage=i+1, save_to_disk_name_override=name_override, dest=dest)
+            if i+1 == max_stage_num:
+                name_override = "config-final.xls"
+    else:
+        _merge_two_sources(first_src, second_src, config, save_to_disk_name_override=None, dest=dest)         
+
+
+def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage: int | None, save_to_disk_name_override: str | None, dest: Path | None):
+    if stage is not None:
+        stage_config = config.content["join"]["similarity_config"]["merge"][f"stage_{stage}"]
+        columns = stage_config["columns"]
+    else:
+        columns = config.content["join"]["similarity_config"]["merge"]["columns"]
 
     from_columns = [col["from_"].lower() for col in columns]
     into_columns = [col["into_"].lower() for col in columns]
@@ -122,6 +171,7 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
         df1 = JoinSource(Reader(first_src).load(), None).df
         df2 = JoinSource(Reader(second_src).load(), None).df
     else:
+        # FIXME: when src is specified through config
         data = DataSource.get()
         df1 = data.join_sources.sources[0].df
         df2 = data.join_sources.sources[1].df
@@ -141,11 +191,10 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
         from_col = column["from_"]
         into_col = column["into_"]
         similarity = column["similarity"]
-        if similarity.get("preprocess", None) is None:
-            continue
-        if similarity.get("preprocess", None) is True:
-            df1[into_col] = df1[into_col].astype(str)
-            df2[from_col] = df2[from_col].astype(str)
+        if not similarity.get("preprocess"):
+           continue
+        for df, col in ((df1, into_col), (df2, from_col), (df1, from_col), (df2, into_col)):
+            safe_cast_to_str(df, col)
         if column.get("preprocess", None) is not None:
             preprocess_config = column["preprocess"]
             _preprocess_data(df1, df2, from_col, into_col, preprocess_config)
@@ -206,18 +255,16 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
                 potential_matches.append((data2, score))
                 continue
 
-            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
-            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
-
             if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data2, score))
-                res = pd.concat([s1, s2], join="inner")
+                res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
                 merged_suggested_series.append(res)
                 continue
 
             exact_matches.append((data2, score))
-            res = pd.concat([s1, s2], join="inner")
+            res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
             merged_exact_series.append(res)
+
         except TypeError:
             continue
 
@@ -277,8 +324,6 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
 
         try:
             s1 = data1
-            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
-            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
 
             if MergeState.NO_MATCH in row_states:
                 no_matches.append((data1, score))
@@ -287,21 +332,20 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
                 potential_matches.append((data1, score))
                 continue
 
-            s1.rename({col: f"{col}_df1" for col in common_cols}, inplace=True)
-            s2.rename({col: f"{col}_df2" for col in common_cols}, inplace=True)
-
             if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data1, score))
-                res = pd.concat([s1, s2], join="inner")
+                res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
                 merged_suggested_series.append(res)
                 continue
 
             exact_matches.append((data1, score))
-            res = pd.concat([s1, s2], join="inner")
+            res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
             merged_exact_series.append(res)
+
         except TypeError:
             continue
         pass
+
     merged_exact_df = pd.DataFrame(merged_exact_series)
     merged_suggested_df = pd.DataFrame(merged_suggested_series)
     merged_df = pd.concat([merged_exact_df, merged_suggested_df])
@@ -366,4 +410,17 @@ def merge(first_src: Path | None, second_src: Path | None, dest: Path | None):
             name_override=f"config-{name}-matches.xls",
             path_override=path_override,
         )
-    DataSource.save_to_file(final_df, Config(), name_override="config-final.xls")
+    if save_to_disk_name_override is not None:
+        name_override = save_to_disk_name_override
+    else:
+        name_override = "config-final.xls"
+    DataSource.save_to_file(final_df, Config(), name_override=name_override)
+
+
+def _get_multi_stage_nums(config) -> int:
+    """
+    Multi stages (if any) are nested in similarity_config.merge.stage_* keys. This function returns the maximum stage number.
+    """
+    join_config = config.content.get("join", {})
+    stages_config = join_config.get("similarity_config", {}).get("merge", {}).keys()
+    return max((int(stage.split("_")[1]) for stage in stages_config if "stage_" in stage), default=1)

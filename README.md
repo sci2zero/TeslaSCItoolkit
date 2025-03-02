@@ -27,24 +27,24 @@ To create an aggregation of [`simple.csv`](examples/simple/simple.csv) based on 
 #### 1. Interactive approach
 
 ```properties
-tesci start -d simple.csv -o exported.csv​
-tesci aggregate avg -c salary -a avg_salary​
-tesci aggregate avg -c age -a avg_age​
-tesci apply​
+tesci start -d simple.csv -o exported.csv
+tesci aggregate avg -c salary -a avg_salary
+tesci aggregate avg -c age -a avg_age
+tesci apply
 ```
 
 #### 2. Configuration approach
 
 ```yml
-aggregate:​
-  - alias: avg_salary​
-    column: salary​
-    function: avg​
-  - alias: avg_age​
-    column: age​
-    function: avg​
-data:​
-  dest: exported.csv​
+aggregate:
+  - alias: avg_salary
+      column: salary
+    function: avg
+  - alias: avg_age
+    column: age
+    function: avg
+data:
+  dest: exported.csv
   src: simple.csv
 ```
 
@@ -61,9 +61,9 @@ Then, specify the configuration used for merging. An example of a configuration 
 
 After specifying your configuration choices, merge can then by run with:
 
-`tesci similarity merge --first-src PATH --second-src PATH --dest DIR`
+`tesci similarity merge --src PATH --src PATH --dest DIR`
 
-where PATH and DIR refer to relative filesystem paths and directories.
+where PATH and DIR refer to relative or absolute filesystem paths and directories.
 
 ## Citing `tesci`
 
