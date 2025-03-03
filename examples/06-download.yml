@@ -1,0 +1,8 @@
+description: >
+  "Download works from OpenAlex for the Faculty of Technical Sciences, University of Novi Sad, 2023-2025"
+
+download:
+  provider: "openalex"
+  # for faster download, update your email address in the url instead of <YOUR_EMAIL_ADDRESS>
+  url: "https://api.openalex.org/works?page=1&filter=authorships.institutions.lineage:i170726198,raw_affiliation_strings.search:Faculty+of+Technical+Sciences,publication_year:2023-2025&sort=relevance_score:desc&per_page=200&mailto=YOUR_EMAIL_ADDRESS"
+  dest: "openalex-fac-tech-sci-2023-2025.csv"
