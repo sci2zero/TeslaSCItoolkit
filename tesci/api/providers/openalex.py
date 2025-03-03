@@ -67,24 +67,18 @@ def flatten_json(data: dict, parent_key: str = "", sep: str = ".") -> dict:
             items.update(flatten_json(value, new_key, sep=sep))
 
         elif isinstance(value, list):
-            # If this is a list of dictionaries, flatten each and collect
             if all(isinstance(elem, dict) for elem in value):
-                # We'll aggregate sub-keys across all items in this list
                 sub_items = {}
                 for elem in value:
                     flattened_elem = flatten_json(elem, "", sep=sep)
                     for subk, subv in flattened_elem.items():
                         sub_items.setdefault(subk, []).append(str(subv))
-
                 # Store pipe-joined strings in items
                 # e.g. authorships.raw_author_name => "Name1|Name2|..."
                 for subk, subv_list in sub_items.items():
                     items[f"{new_key}.{subk}"] = "|".join(subv_list)
             else:
-                # A list of scalar values -> just pipe-join them
                 items[new_key] = "|".join(map(str, value))
-
-        # Otherwise it's a scalar; store directly
         else:
             items[new_key] = value
 
