@@ -1,8 +1,8 @@
 on: [push]
 
 env:
-  EXPORTER_RUN_FROM_CI: True
-  EXPORTER_RELEASE_STRATEGY: "${{ startsWith(github.ref, 'refs/tags/') && 'tag' || 'commit' }}"
+  TESCI_RUN_FROM_CI: True
+  TESCI_RELEASE_STRATEGY: "${{ startsWith(github.ref, 'refs/tags/') && 'tag' || 'commit' }}"
 
 jobs:
   run-exporter:
