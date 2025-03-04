@@ -40,12 +40,9 @@ def download(download_config: Config, dest: Path | None = None):
     end = time.time()
     elapsed = end - start
     print("Downloaded and flattened data in {:.2f} seconds".format(elapsed))
-    breakpoint()
-
     dest = dest or download_config.get("dest")
     if dest is None:
         raise ValueError("Expected destionation path to be provided in the download configuration")
-    breakpoint()
     DataSource.save_to_file(df, Config(), name_override=dest)
     print(f"Data saved to {dest}")
 
