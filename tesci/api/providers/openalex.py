@@ -94,14 +94,13 @@ def append_download_response(data: dict, df: pd.DataFrame) -> None:
     if "results" not in data:
         return
 
-    # Ignore these fields, since they are ignored in the schema
-    if "abstract_inverted_index" in data["results"]:
-        del data["results"]["abstract_inverted_index"]
-    if "counts_by_year" in data["results"]:
-        del data["results"]["counts_by_year"]
-
     flattened_rows = []
     for record in data["results"]:
+        # Ignore these fields, since they are ignored in the schema
+        if "abstract_inverted_index" in record:
+            del record["abstract_inverted_index"]
+        if "counts_by_year" in record:
+            del record["counts_by_year"]
         flattened_record = flatten_json(record)
         flattened_rows.append(flattened_record)
 
