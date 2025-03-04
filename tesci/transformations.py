@@ -158,6 +158,8 @@ def _apply_aggregations(
 
     aggregated_aliases_columns = [aggregation["alias"] for aggregation in aggregations]
     grouped_columns = [aggregation["grouped"] for aggregation in aggregations if aggregation.get("grouped") is not None]
+    # Flatten to turn into a plain list
+    grouped_columns = [item for sublist in grouped_columns for item in sublist]
 
     columns = list(set(grouped_columns)) + list(set(aggregated_aliases_columns))
     df = df[columns]
