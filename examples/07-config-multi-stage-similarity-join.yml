@@ -1,0 +1,104 @@
+description: >
+  "Combine three citation databases (WoS, Scopus and OpenAlex) using similarity with multiple criteria: title, authors, year, DOI, source title, and document type"
+
+join:
+  similarity: yes
+  multi_stage: yes
+  similarity_config:
+    merge:
+      stage_1:
+        description: "Merge WoS and Scopus"
+        columns:
+          - from_: "Title"
+            into_: "Article Title"
+            similarity:
+              above: 90
+              cutoff: 45
+              preprocess: yes
+            is_reference: yes
+            preprocess:
+              truncate_after:
+                - "; "
+          - from_: "Authors"
+            into_: "Authors"
+            similarity:
+              above: 40
+              cutoff: 30
+              preprocess: yes
+          - from_: "Year"
+            into_: "Publication Year"
+            similarity:
+              above: 100
+              cutoff: 100
+              preprocess: yes
+          - from_: "DOI"
+            into_: "DOI"
+            similarity:
+              above: 100
+              cutoff: 100
+              preprocess: yes
+          - from_: "Source title"
+            into_: "Source Title"
+            similarity:
+              above: 20
+              cutoff: 10
+              preprocess: yes
+          - from_: "Document Type"
+            into_: "Document Type"
+            similarity:
+              above: 100
+              cutoff: 100
+              preprocess: yes
+            preprocess:
+              replace:
+                "Conference Paper": "Proceedings Paper"
+                "Editorial": "Editorial Material"
+                "Article in press": "Article; Early Access"
+                "Book chapter": "Book Review"
+      stage_2:
+        description: "Merge WoS-Scopus and OpenAlex"
+        merge:
+          columns:
+            - from_: "title"
+              into_: "Article Title"
+              similarity:
+                above: 90
+                cutoff: 45
+                preprocess: yes
+              is_reference: yes
+              preprocess:
+                truncate_after:
+                  - "; "
+            - from_: "authorships.raw_author_name"
+              into_: "Authors"
+              similarity:
+                above: 10
+                cutoff: 5
+                preprocess: yes
+            - from_: "publication_year"
+              into_: "Publication Year"
+              similarity:
+                above: 100
+                cutoff: 100
+                preprocess: yes
+            - from_: "doi"
+              into_: "DOI"
+              similarity:
+                above: 100
+                cutoff: 100
+                preprocess: yes
+            - from_: "primary_location.source.display_name"
+              into_: "Source Title"
+              similarity:
+                above: 20
+                cutoff: 10
+                preprocess: yes
+            - from_: "type"
+              into_: "Document Type"
+              similarity:
+                above: 100
+                cutoff: 100
+                preprocess: yes
+              preprocess:
+                replace:
+                  "book-chapter": "Book Review"
