@@ -69,7 +69,7 @@ class DataSource(object):
             raise ValueError(
                 "You cannot specify both a data source and join sources in the config file."
             )
-        if join_sources.get("src", None) is not None:
+        if join_sources is not None and join_sources.get("src", None) is not None:
             self.join_sources = JoinSources(
                 sources=[
                     JoinSource(
