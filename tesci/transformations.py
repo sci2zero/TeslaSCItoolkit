@@ -85,11 +85,21 @@ def preview_dataset(data: DataSource, config: Config) -> None:
     """Applies the transformations of the dataframe."""
 
     columns = config.content.get("include")
+
     aggregations = config.content.get("aggregate")
+
     sort = config.content.get("sort")
 
     df = _apply_join(data) if data.join_sources is not None else data.source.load()
-    df = _apply_include(df, columns)
+
+    if columns is not None:
+        df = _apply_include(df, columns)
+    elif aggregations is not None:
+        # Include columns are missing, so we need to include the columns that are aggregated
+        columns = [aggregation["columns"] for aggregation in aggregations]
+        # Flatten to turn into a plain list
+        columns = [item for sublist in columns for item in sublist]
+
     df = _apply_aggregations(df, aggregations, columns)
     df = _apply_sort(df, sort)
 
@@ -131,8 +141,12 @@ def _apply_aggregations(
                 raise ValueError(f"Function {aggregation['function']} not supported.")
 
         if aggregation.get("grouped") is not None:
-            unmerged = unmerged.reset_index(name=aggregation["alias"])
-            df = df.merge(unmerged, on=aggregation["grouped"])
+            if isinstance(unmerged, pd.Series):
+                unmerged = unmerged.reset_index(name=aggregation["alias"])
+                df = df.merge(unmerged, on=aggregation["grouped"])
+            else:
+                unmerged = unmerged.reset_index()
+                df = df.merge(unmerged, on=aggregation["grouped"])
         elif columns is not None:
             df[aggregation["alias"]] = unmerged
         else:
@@ -141,6 +155,12 @@ def _apply_aggregations(
 
     if columns is None and data != {}:
         df = pd.DataFrame(data)
+
+    aggregated_aliases_columns = [aggregation["alias"] for aggregation in aggregations]
+    grouped_columns = [aggregation["grouped"] for aggregation in aggregations if aggregation.get("grouped") is not None]
+
+    columns = list(set(grouped_columns)) + list(set(aggregated_aliases_columns))
+    df = df[columns]
 
     df = df.drop_duplicates()
 
@@ -238,9 +258,6 @@ def _apply_join_fuzzy(data: DataSource) -> pd.DataFrame:
 
 def _apply_include(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     """Applies the include to the dataframe."""
-    if columns is None:
-        return df
-
     return df[columns]
 
 
