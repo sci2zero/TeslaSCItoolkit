@@ -139,19 +139,17 @@ def merge(sources: list[Path] | None, dest: Path | None):
     second_src = sources[1]
 
     max_stage_num = _get_multi_stage_nums(config)
+    name_override = "config-final.xls"
 
-    if max_stage_num != 1:
-        for i in range(0, max_stage_num):
-            if i+1 != max_stage_num:
-                name_override = f"config-stage_{i+1}_merged.xls"
-            if i != 0:
-                first_src = sources[i+1]
-                second_src = DataSource.get_file_path(Config(), name_override=name_override)
-            _merge_two_sources(first_src, second_src, config, stage=i+1, save_to_disk_name_override=name_override, dest=dest)
-            if i+1 == max_stage_num:
-                name_override = "config-final.xls"
-    else:
-        _merge_two_sources(first_src, second_src, config, save_to_disk_name_override=None, dest=dest)         
+    for i in range(0, max_stage_num):
+        if i+1 != max_stage_num:
+            name_override = f"config-stage_{i+1}_merged.xls"
+        elif i+1 == max_stage_num:
+            name_override = "config-final.xls"
+        if i != 0:
+            first_src = sources[i+1]
+            second_src = DataSource.get_file_path(Config(), name_override=name_override)
+        _merge_two_sources(first_src, second_src, config, stage=i+1, save_to_disk_name_override=name_override, dest=dest)
 
 
 def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage: int | None, save_to_disk_name_override: str | None, dest: Path | None):
