@@ -31,6 +31,12 @@ dependencies = [
     'importlib-metadata; python_version<"3.8"',
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    "pytest-cov",
+]
+
 [project.scripts]
 tesci = "tesci.scripts.tesci:cli"
 
@@ -39,5 +45,18 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 
-[tool.setuptools.packages]
-find = {} # Scan the project directory with the default parameters
+[tool.setuptools.packages.find]
+include = ["tesci*"] # Ship only the package, never the test suite
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers -ra"
+xfail_strict = true
+filterwarnings = [
+    "ignore::DeprecationWarning:openpyxl",
+]
+markers = [
+    "integration: drives the CLI end-to-end against a temporary .tesci project",
+    "slow: takes noticeably longer; excluded by `pytest -m 'not slow'`",
+    "known_bug: documents behaviour that is wrong today and expected to change",
+]
