@@ -55,9 +55,6 @@ def test_example_config_uses_only_known_top_level_keys(config_path):
     assert not unknown, f"{config_path.name} has unrecognized top-level keys: {unknown}"
 
 
-KNOWN_UNIMPLEMENTED_CONFIGS = {"06-config-multiple-similarity-joins"}
-
-
 @pytest.mark.known_bug
 def test_examples_06_multi_source_shape_is_flagged_as_unimplemented(repo_root):
     """``examples/06-config-multiple-similarity-joins.yml`` documents an n-way
@@ -66,8 +63,14 @@ def test_examples_06_multi_source_shape_is_flagged_as_unimplemented(repo_root):
     doesn't touch the merge code -- it just pins down that the example is
     known-aspirational, so if a rewrite starts consuming it, this test (not
     a confusing runtime KeyError somewhere else) is the place to update.
+
+    The file is a work-in-progress draft that may not always be committed;
+    this test is a no-op when it's absent.
     """
     path = repo_root / "examples" / "06-config-multiple-similarity-joins.yml"
+    if not path.exists():
+        pytest.skip(f"{path.name} is not present in this checkout")
+
     with open(path) as fh:
         content = yaml.safe_load(fh)
 

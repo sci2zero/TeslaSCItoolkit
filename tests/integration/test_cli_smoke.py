@@ -46,7 +46,8 @@ def test_similarity_subcommands_register(tesci_project, subcommand):
     assert result.exit_code == 0, result.output
 
 
-def test_apply_aborts_without_confirmation(tesci_project):
+def test_apply_aborts_without_confirmation(tesci_project, monkeypatch):
+    monkeypatch.delenv("TESCI_RUN_FROM_CI", raising=False)
     tesci_project.add_csv("in.csv", [{"a": 1}])
     tesci_project.write_config({"data": {"src": "in.csv", "dest": "out.csv"}})
 
