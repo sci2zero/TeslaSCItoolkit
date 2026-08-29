@@ -5,7 +5,7 @@ env:
   TESCI_RELEASE_STRATEGY: "${{ startsWith(github.ref, 'refs/tags/') && 'tag' || 'commit' }}"
 
 jobs:
-  run-exporter:
+  test:
     runs-on: ubuntu-latest
 
     strategy:
@@ -22,4 +22,6 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -e .
+          pip install -e ".[dev]"
+      - name: Run tests
+        run: pytest -q
