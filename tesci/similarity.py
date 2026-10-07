@@ -82,7 +82,10 @@ def safe_replace(df, col, replace):
 def safe_truncate(df, col, truncate_after):
     if col in df.columns:
         for truncate_str in truncate_after:
-            df[col] = df[col].str.split(truncate_str).str[0]
+            # regex=False: pandas treats a multi-character pattern as a regular
+            # expression by default, so a separator like "; [" raises
+            # "unterminated character set" instead of splitting on it literally.
+            df[col] = df[col].str.split(truncate_str, regex=False).str[0]
 
 
 def _get_reference_column(columns):
@@ -139,6 +142,7 @@ def merge(sources: list[Path] | None, dest: Path | None):
     second_src = sources[1]
 
     max_stage_num = _get_multi_stage_nums(config)
+    is_staged = _has_stage_config(config)
     name_override = "config-final.xls"
 
     for i in range(0, max_stage_num):
@@ -149,7 +153,10 @@ def merge(sources: list[Path] | None, dest: Path | None):
         if i != 0:
             first_src = sources[i+1]
             second_src = DataSource.get_file_path(Config(), name_override=name_override)
-        _merge_two_sources(first_src, second_src, config, stage=i+1, save_to_disk_name_override=name_override, dest=dest)
+        # A flat config keeps its columns directly under `merge`, with no `stage_N`
+        # key to look up, so the stage number must not be passed through.
+        stage = i + 1 if is_staged else None
+        _merge_two_sources(first_src, second_src, config, stage=stage, save_to_disk_name_override=name_override, dest=dest)
 
 
 def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage: int | None, save_to_disk_name_override: str | None, dest: Path | None):
@@ -205,10 +212,32 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     no_matches = []
     merged_exact_series = []
     merged_suggested_series = []
+    # Which two records each decision was about. The buckets below only keep one
+    # side's row, so without this the pairing the matcher chose is unrecoverable
+    # from its output -- and pairing is what an evaluation has to score.
+    pair_decisions: list[dict] = []
+    id_columns = config.content["join"]["similarity_config"]["merge"].get("id_columns", {})
+    first_id_col = (id_columns.get("first") or "").lower() or None
+    second_id_col = (id_columns.get("second") or "").lower() or None
+
+    def _record_pair(first_pos: int, second_pos: int, state: MergeState, ref_score: float):
+        first_row, second_row = df1.iloc[first_pos], df2.iloc[second_pos]
+        pair_decisions.append(
+            {
+                "bucket": state.name.lower(),
+                "merged": state in (MergeState.EXACT, MergeState.SUGGESTED),
+                "reference_score": ref_score,
+                "first_index": first_pos,
+                "second_index": second_pos,
+                "first_id": first_row.get(first_id_col) if first_id_col else None,
+                "second_id": second_row.get(second_id_col) if second_id_col else None,
+            }
+        )
+
     common_cols = df1.columns.intersection(df2.columns).tolist()
     print('[df1] Traversing columns: "', columns)
     reference_column = _get_reference_column(columns)
-    for _, data2 in df2.iterrows():
+    for pos2, (_, data2) in enumerate(df2.iterrows()):
         row_states = []  # [exact, suggested, potential, no]
         score = process.extractOne(
             data2[reference_column["from_"]],
@@ -248,18 +277,22 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
             s1 = data2
             if MergeState.NO_MATCH in row_states:
                 no_matches.append((data2, score))
+                _record_pair(score[2], pos2, MergeState.NO_MATCH, score[1])
                 continue
             if MergeState.POTENTIAL in row_states:
                 potential_matches.append((data2, score))
+                _record_pair(score[2], pos2, MergeState.POTENTIAL, score[1])
                 continue
 
             if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data2, score))
+                _record_pair(score[2], pos2, MergeState.SUGGESTED, score[1])
                 res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
                 merged_suggested_series.append(res)
                 continue
 
             exact_matches.append((data2, score))
+            _record_pair(score[2], pos2, MergeState.EXACT, score[1])
             res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
             merged_exact_series.append(res)
 
@@ -280,7 +313,7 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
         )
     }
     skipped = 0
-    for idx, data1 in df1.iterrows():
+    for pos1, (idx, data1) in enumerate(df1.iterrows()):
         if idx in keys_to_match.keys():
             skipped += 1
             # already matched
@@ -325,18 +358,22 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
 
             if MergeState.NO_MATCH in row_states:
                 no_matches.append((data1, score))
+                _record_pair(pos1, score[2], MergeState.NO_MATCH, score[1])
                 continue
             if MergeState.POTENTIAL in row_states:
                 potential_matches.append((data1, score))
+                _record_pair(pos1, score[2], MergeState.POTENTIAL, score[1])
                 continue
 
             if MergeState.SUGGESTED in row_states:
                 suggested_matches.append((data1, score))
+                _record_pair(pos1, score[2], MergeState.SUGGESTED, score[1])
                 res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
                 merged_suggested_series.append(res)
                 continue
 
             exact_matches.append((data1, score))
+            _record_pair(pos1, score[2], MergeState.EXACT, score[1])
             res = pd.concat([s1, s2], join="inner").groupby(level=0).last()
             merged_exact_series.append(res)
 
@@ -371,6 +408,16 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     final_df = pd.concat(
         [exact_matches_df, suggested_matches_df, potential_matches_df, no_matches_df]
     )
+    # Count duplicates on whichever side of the reference column survived into the
+    # merged record, rather than assuming a column literally named "title".
+    dedup_subset = next(
+        (
+            col
+            for col in (reference_column["into_"], reference_column["from_"])
+            if col in merged_df.columns
+        ),
+        None,
+    )
     analytics = {
         "exact_matches": len(exact_matches),
         "suggested_matches": len(suggested_matches),
@@ -385,8 +432,10 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
         "df2 size": len(df2),
         "df1 size": len(df1),
         "merged_df size": len(merged_df),
-        "duplicates in merged_df": len(
-            merged_df[merged_df.duplicated(subset="title", keep="first")]
+        "duplicates in merged_df": (
+            0
+            if dedup_subset is None
+            else len(merged_df[merged_df.duplicated(subset=dedup_subset, keep="first")])
         ),
     }
     import pprint
@@ -414,6 +463,14 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
         name_override = "config-final.xls"
     DataSource.save_to_file(final_df, Config(), name_override=name_override)
 
+    pairs_name = f"{Path(name_override).stem}-pairs.csv"
+    DataSource.save_to_file(
+        pd.DataFrame(pair_decisions),
+        Config(),
+        name_override=pairs_name,
+        path_override=path_override,
+    )
+
 
 def _get_multi_stage_nums(config) -> int:
     """
@@ -422,3 +479,13 @@ def _get_multi_stage_nums(config) -> int:
     join_config = config.content.get("join", {})
     stages_config = join_config.get("similarity_config", {}).get("merge", {}).keys()
     return max((int(stage.split("_")[1]) for stage in stages_config if "stage_" in stage), default=1)
+
+
+def _has_stage_config(config) -> bool:
+    """
+    Whether the merge config is split into stage_* blocks. A flat config declares
+    `columns` directly under `merge`, so there is no stage key to look up.
+    """
+    join_config = config.content.get("join", {})
+    stages_config = join_config.get("similarity_config", {}).get("merge", {}).keys()
+    return any("stage_" in stage for stage in stages_config)
