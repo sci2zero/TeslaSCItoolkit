@@ -82,7 +82,10 @@ def safe_replace(df, col, replace):
 def safe_truncate(df, col, truncate_after):
     if col in df.columns:
         for truncate_str in truncate_after:
-            df[col] = df[col].str.split(truncate_str).str[0]
+            # regex=False: pandas treats a multi-character pattern as a regular
+            # expression by default, so a separator like "; [" raises
+            # "unterminated character set" instead of splitting on it literally.
+            df[col] = df[col].str.split(truncate_str, regex=False).str[0]
 
 
 def _get_reference_column(columns):
