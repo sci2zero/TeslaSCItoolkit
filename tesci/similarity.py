@@ -371,6 +371,16 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     final_df = pd.concat(
         [exact_matches_df, suggested_matches_df, potential_matches_df, no_matches_df]
     )
+    # Count duplicates on whichever side of the reference column survived into the
+    # merged record, rather than assuming a column literally named "title".
+    dedup_subset = next(
+        (
+            col
+            for col in (reference_column["into_"], reference_column["from_"])
+            if col in merged_df.columns
+        ),
+        None,
+    )
     analytics = {
         "exact_matches": len(exact_matches),
         "suggested_matches": len(suggested_matches),
@@ -385,8 +395,10 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
         "df2 size": len(df2),
         "df1 size": len(df1),
         "merged_df size": len(merged_df),
-        "duplicates in merged_df": len(
-            merged_df[merged_df.duplicated(subset="title", keep="first")]
+        "duplicates in merged_df": (
+            0
+            if dedup_subset is None
+            else len(merged_df[merged_df.duplicated(subset=dedup_subset, keep="first")])
         ),
     }
     import pprint
