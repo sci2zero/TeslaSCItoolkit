@@ -5,13 +5,13 @@ to test the matching *algorithm*), this exercises the public ``merge()``
 entry point -- the part responsible for picking source pairs and stage
 numbers and chaining stage outputs together.
 
-Both entry-point paths are currently broken (see the two ``xfail`` tests
-below), because ``merge()`` was refactored in commit a2cb830 to always pass
-``stage=1``/``stage=i+1`` rather than ``stage=None`` for a flat single-stage
-config. A passing test at the bottom manually performs the chaining
-``merge()`` is supposed to do, to show the underlying algorithm still
-composes correctly -- that's the behavior a fix to ``merge()`` should
-reproduce.
+The flat two-source path works again: ``merge()`` had been refactored in
+commit a2cb830 to always pass ``stage=i+1`` rather than ``stage=None`` for a
+flat single-stage config, and now consults ``_has_stage_config()`` instead.
+The 3+ source chaining path is still broken (see the remaining ``xfail``);
+a passing test at the bottom manually performs the chaining ``merge()`` is
+supposed to do, to show the underlying algorithm still composes correctly --
+that's the behavior a fix should reproduce.
 """
 
 from __future__ import annotations
@@ -25,21 +25,43 @@ from tests.helpers import merge_column, multi_stage_config, similarity_config
 from tests.helpers.synthetic import scopus_like_frame, synthetic_similarity_columns, wos_like_frame
 
 
-@pytest.mark.known_bug
-@pytest.mark.xfail(
-    strict=True,
-    reason="merge() always calls _merge_two_sources with stage=1, which looks up "
-    "config['join']['similarity_config']['merge']['stage_1'] -- a key that doesn't "
-    "exist in a flat (non multi_stage) config, e.g. examples/04-config-similarity-join.yml.",
-)
 def test_two_source_merge_with_flat_config_succeeds(tesci_project, captured_outputs):
+    # Source order is not free: `_merge_two_sources` reads ``into_`` off the FIRST
+    # source and ``from_`` off the SECOND (see
+    # test_source_order_follows_into_then_from below). synthetic_similarity_columns()
+    # maps from_="title" into_="article title", and in these fixtures "title" lives
+    # on wos_like_frame, so wos_like_frame has to be the *second* source.
+    # NB the real WoS/Scopus exports are the other way round -- WoS carries
+    # "Article Title" and Scopus carries "Title" -- so a real run passes WoS first.
     tesci_project.write_config(similarity_config(synthetic_similarity_columns()))
     wos = tesci_project.add_csv("wos.csv", wos_like_frame())
     scopus = tesci_project.add_csv("scopus.csv", scopus_like_frame())
 
-    result = tesci_project.run("similarity", "merge", "-s", str(wos), "-s", str(scopus))
+    result = tesci_project.run("similarity", "merge", "-s", str(scopus), "-s", str(wos))
 
     assert result.exit_code == 0, result.output
+
+
+def test_source_order_follows_into_then_from(tesci_project, captured_outputs):
+    """Pin the orientation contract: ``--src <into_ side> --src <from_ side>``.
+
+    ``_merge_two_sources`` resolves ``reference_column["into_"]`` against df1 (the
+    first source) and ``reference_column["from_"]`` against df2 (the second), so
+    passing the sources the other way round raises ``KeyError`` on the reference
+    column. This is worth pinning because the ``from_``/``into_`` naming reads as
+    though ``from_`` should belong to the first source, and because the order
+    silently determines which schema the merged output is written in.
+    """
+    tesci_project.write_config(similarity_config(synthetic_similarity_columns()))
+    wos = tesci_project.add_csv("wos.csv", wos_like_frame())
+    scopus = tesci_project.add_csv("scopus.csv", scopus_like_frame())
+
+    correct = tesci_project.run("similarity", "merge", "-s", str(scopus), "-s", str(wos))
+    assert correct.exit_code == 0, correct.output
+
+    reversed_ = tesci_project.run("similarity", "merge", "-s", str(wos), "-s", str(scopus))
+    assert reversed_.exit_code != 0
+    assert isinstance(reversed_.exception, KeyError)
 
 
 @pytest.mark.known_bug

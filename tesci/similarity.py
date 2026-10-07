@@ -139,6 +139,7 @@ def merge(sources: list[Path] | None, dest: Path | None):
     second_src = sources[1]
 
     max_stage_num = _get_multi_stage_nums(config)
+    is_staged = _has_stage_config(config)
     name_override = "config-final.xls"
 
     for i in range(0, max_stage_num):
@@ -149,7 +150,10 @@ def merge(sources: list[Path] | None, dest: Path | None):
         if i != 0:
             first_src = sources[i+1]
             second_src = DataSource.get_file_path(Config(), name_override=name_override)
-        _merge_two_sources(first_src, second_src, config, stage=i+1, save_to_disk_name_override=name_override, dest=dest)
+        # A flat config keeps its columns directly under `merge`, with no `stage_N`
+        # key to look up, so the stage number must not be passed through.
+        stage = i + 1 if is_staged else None
+        _merge_two_sources(first_src, second_src, config, stage=stage, save_to_disk_name_override=name_override, dest=dest)
 
 
 def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage: int | None, save_to_disk_name_override: str | None, dest: Path | None):
@@ -434,3 +438,13 @@ def _get_multi_stage_nums(config) -> int:
     join_config = config.content.get("join", {})
     stages_config = join_config.get("similarity_config", {}).get("merge", {}).keys()
     return max((int(stage.split("_")[1]) for stage in stages_config if "stage_" in stage), default=1)
+
+
+def _has_stage_config(config) -> bool:
+    """
+    Whether the merge config is split into stage_* blocks. A flat config declares
+    `columns` directly under `merge`, so there is no stage key to look up.
+    """
+    join_config = config.content.get("join", {})
+    stages_config = join_config.get("similarity_config", {}).get("merge", {}).keys()
+    return any("stage_" in stage for stage in stages_config)
