@@ -122,3 +122,25 @@ def test_no_matches_bucket_does_not_duplicate_potential_matches(tesci_project, c
     potential_case = next(c for c in synthetic_cases() if c.name == "potential")
     no_matches = saved[_bucket_file(Bucket.NO_MATCH)]
     assert potential_case.scopus_row["Article Title"] not in no_matches["article title"].values
+
+
+def test_blank_reference_value_does_not_crash_the_merge(tesci_project, captured_outputs):
+    """A record with no title must not abort the run.
+
+    Real exports do have them. pandas 3 keeps missing values as NaN through
+    ``astype(str)``, and ``process.extractOne(NaN, ...)`` returns None rather
+    than a match, so an unguarded cast crashes the merge on ``score[2]``.
+    """
+    tesci_project.write_config({})
+    wos = wos_like_frame()
+    blank = wos.iloc[[0]].copy()
+    blank["Title"] = float("nan")
+    wos_path = tesci_project.add_csv("wos.csv", pd.concat([wos, blank], ignore_index=True))
+    scopus_path = tesci_project.add_csv("scopus.csv", scopus_like_frame())
+    config = SimpleNamespace(content=similarity_config(synthetic_similarity_columns()))
+
+    similarity._merge_two_sources(
+        scopus_path, wos_path, config, stage=None, save_to_disk_name_override=None, dest=None
+    )
+
+    assert "config-final.xls" in captured_outputs

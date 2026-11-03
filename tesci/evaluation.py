@@ -173,7 +173,9 @@ def legacy_title_set_scores(
         for col in cols if isinstance(cols, tuple) else (cols,):
             actual = lookup.get(str(col).lower())
             if actual is not None:
-                found |= set(df[actual].astype(str).apply(utils.default_process))
+                # fillna: pandas 3 keeps NaN through astype(str), and default_process
+                # rejects it. As the string "nan" it is discarded just below.
+                found |= set(df[actual].astype(str).fillna("nan").apply(utils.default_process))
         found.discard("")
         found.discard("nan")
         return found

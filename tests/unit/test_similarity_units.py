@@ -194,3 +194,14 @@ def test_synthetic_case_ratios_land_in_expected_band(case):
     assert worst == expected, (
         f"case '{case.name}' ({case.note}) computed worst-case bucket {worst}, expected {expected}"
     )
+
+
+def test_safe_cast_to_str_spells_missing_values_as_the_string_nan():
+    """The merge's ``== "nan"`` guards rely on this; pandas 3 alone would keep NaN."""
+    df = pd.DataFrame({"title": ["a", float("nan")], "year": [2023.0, float("nan")]})
+
+    safe_cast_to_str(df, "title")
+    safe_cast_to_str(df, "year")
+
+    assert df["title"].tolist() == ["a", "nan"]
+    assert df["year"].tolist() == ["2023.0", "nan"]
