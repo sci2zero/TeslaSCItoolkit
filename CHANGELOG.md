@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # [Unreleased]
 
+## Fixed
+
+- pandas 3 compatibility:
+  - a blank value in a similarity merge's reference column no longer crashes the merge;
+  - a blank title no longer crashes the legacy title-set evaluation;
+  - replace `inplace=True` calls that pandas has deprecated.
+
 # [1.0.1] - 2024-04-24
 
 ## Fixed

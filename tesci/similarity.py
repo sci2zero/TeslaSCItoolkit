@@ -71,7 +71,10 @@ def suggest():
 
 def safe_cast_to_str(df, col):
     if col in df.columns:
-        df[col] = df[col].astype(str)
+        # pandas 3 keeps missing values as NaN through astype(str), where pandas 2
+        # wrote the string "nan". The merge depends on the string: its `== "nan"`
+        # guards look for it, and extractOne returns None for a NaN query.
+        df[col] = df[col].astype(str).fillna("nan")
 
 
 def safe_replace(df, col, replace):
@@ -181,16 +184,16 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
         df1 = data.join_sources.sources[0].df
         df2 = data.join_sources.sources[1].df
 
-    df1.rename(columns=str.lower, inplace=True)
-    df2.rename(columns=str.lower, inplace=True)
+    df1 = df1.rename(columns=str.lower)
+    df2 = df2.rename(columns=str.lower)
 
     for column in columns:
         column["from_"] = column["from_"].lower()
         column["into_"] = column["into_"].lower()
 
     if config.content["join"]["similarity_config"]["merge"].get("drop_duplicates"):
-        df1.drop_duplicates(inplace=True)
-        df2.drop_duplicates(inplace=True)
+        df1 = df1.drop_duplicates()
+        df2 = df2.drop_duplicates()
 
     for column in columns:
         from_col = column["from_"]
@@ -385,20 +388,15 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     merged_suggested_df = pd.DataFrame(merged_suggested_series)
     merged_df = pd.concat([merged_exact_df, merged_suggested_df])
 
-    exact_matches_series = [t[0] for t in exact_matches]
-    suggested_matches_series = [t[0] for t in suggested_matches]
-    potential_matches_series = [t[0] for t in potential_matches]
-    no_matches_series = [t[0] for t in no_matches]
-    for column in columns:
-        from_col = column["from_"]
-        into_col = column["into_"]
-        for row in (
-            exact_matches_series
-            + suggested_matches_series
-            + potential_matches_series
-            + no_matches_series
-        ):
-            row.rename({from_col: into_col}, inplace=True)
+    def _to_into_schema(row: pd.Series) -> pd.Series:
+        for column in columns:
+            row = row.rename({column["from_"]: column["into_"]})
+        return row
+
+    exact_matches_series = [_to_into_schema(t[0]) for t in exact_matches]
+    suggested_matches_series = [_to_into_schema(t[0]) for t in suggested_matches]
+    potential_matches_series = [_to_into_schema(t[0]) for t in potential_matches]
+    no_matches_series = [_to_into_schema(t[0]) for t in no_matches]
 
     exact_matches_df = pd.DataFrame(exact_matches_series)
     suggested_matches_df = pd.DataFrame(suggested_matches_series)
