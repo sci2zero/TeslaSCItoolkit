@@ -1,5 +1,6 @@
 import click
 
+from tesci.scripts.adjudicate import adjudicate_cli
 from tesci.scripts.aggregate import aggregate
 from tesci.scripts.apply import apply
 from tesci.scripts.download import download
@@ -17,6 +18,7 @@ def cli():
     pass
 
 
+cli.add_command(adjudicate_cli)
 cli.add_command(aggregate)
 cli.add_command(apply)
 cli.add_command(download)
