@@ -144,3 +144,49 @@ def test_blank_reference_value_does_not_crash_the_merge(tesci_project, captured_
     )
 
     assert "config-final.xls" in captured_outputs
+
+
+def _merge_on_lab_code(tesci_project, first_rows, second_rows):
+    tesci_project.write_config({})
+    first_path = tesci_project.add_csv("first.csv", first_rows)
+    second_path = tesci_project.add_csv("second.csv", second_rows)
+    columns = [
+        {
+            "from_": "code",
+            "into_": "code",
+            "similarity": {"above": 100, "cutoff": 100, "preprocess": True},
+            "is_reference": True,
+        }
+    ]
+    config = SimpleNamespace(content=similarity_config(columns))
+    similarity._merge_two_sources(
+        first_path, second_path, config, stage=None, save_to_disk_name_override=None, dest=None
+    )
+
+
+def test_blank_reference_is_a_no_match_even_when_nothing_else_is_compared(tesci_project, captured_outputs):
+    """With the reference as the only column, a blank used to leave nothing compared, which meant exact."""
+    _merge_on_lab_code(
+        tesci_project,
+        [{"code": "A-1"}, {"code": None}, {"code": None}],
+        [{"code": "A-1"}, {"code": "B-2"}],
+    )
+
+    assert len(captured_outputs["config-exact-matches.xls"]) == 1
+    assert (captured_outputs["config-no-matches.xls"]["code"] == "nan").sum() == 2
+
+
+def test_a_real_value_never_pairs_with_a_blank_candidate(tesci_project, captured_outputs):
+    """A code resembling the "nan" spelling of a blank must not be drawn to the blank row."""
+    _merge_on_lab_code(tesci_project, [{"code": None}, {"code": "A-1"}], [{"code": "nan-1"}])
+
+    pairs = captured_outputs["config-final-pairs.csv"]
+    assert not pairs["merged"].any()
+    assert pairs["first_index"].tolist() == [1, 1]
+
+
+def test_a_record_with_no_candidates_left_is_a_no_match(tesci_project, captured_outputs):
+    _merge_on_lab_code(tesci_project, [{"code": None}, {"code": "A-1"}], [{"code": None}, {"code": None}])
+
+    assert captured_outputs["config-exact-matches.xls"].empty
+    assert len(captured_outputs["config-no-matches.xls"]) == 4
