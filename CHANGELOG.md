@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - a blank value in a similarity merge's reference column no longer crashes the merge;
   - a blank title no longer crashes the legacy title-set evaluation;
   - replace `inplace=True` calls that pandas has deprecated.
+- Similarity: a record with a blank reference value is now a no-match. It used to be paired
+  with an arbitrary record, and marked exact when no other configured column could tell them apart.
 
 # [1.0.1] - 2024-04-24
 

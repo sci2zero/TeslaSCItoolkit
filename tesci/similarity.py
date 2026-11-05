@@ -95,6 +95,14 @@ def _get_reference_column(columns):
     return next(filter(lambda col: col.get("is_reference", False), columns), None)
 
 
+def _is_blank(value) -> bool:
+    return pd.isna(value) or value == "nan"
+
+
+def _without_blanks(values: pd.Series) -> pd.Series:
+    return values[~values.map(_is_blank)]
+
+
 def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
     remove = preprocess_config.get("remove", None)
     replace = preprocess_config.get("replace", None)
@@ -240,14 +248,26 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     common_cols = df1.columns.intersection(df2.columns).tolist()
     print('[df1] Traversing columns: "', columns)
     reference_column = _get_reference_column(columns)
+    # The column loops skip a blank value, so a blank reference would leave a pair with
+    # nothing compared, and a pair with nothing compared falls through to exact. Keeping
+    # blanks out of both the queries and the candidates means that can never happen.
+    first_candidates = _without_blanks(df1[reference_column["into_"]])
+    second_candidates = _without_blanks(df2[reference_column["from_"]])
     for pos2, (_, data2) in enumerate(df2.iterrows()):
         row_states = []  # [exact, suggested, potential, no]
-        score = process.extractOne(
-            data2[reference_column["from_"]],
-            df1[reference_column["into_"]],
-            scorer=fuzz.QRatio,
-            processor=utils.default_process,
+        score = (
+            None
+            if _is_blank(data2[reference_column["from_"]])
+            else process.extractOne(
+                data2[reference_column["from_"]],
+                first_candidates,
+                scorer=fuzz.QRatio,
+                processor=utils.default_process,
+            )
         )
+        if score is None:
+            no_matches.append((data2, score))
+            continue
         s2 = df1.iloc[score[2]].copy()
         for column in columns:
             from_col = column["from_"]
@@ -322,12 +342,19 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
             # already matched
             continue
         row_states = []  # [exact, suggested, potential, no]
-        score = process.extractOne(
-            data1[reference_column["into_"]],
-            df2[reference_column["from_"]],
-            scorer=fuzz.QRatio,
-            processor=utils.default_process,
+        score = (
+            None
+            if _is_blank(data1[reference_column["into_"]])
+            else process.extractOne(
+                data1[reference_column["into_"]],
+                second_candidates,
+                scorer=fuzz.QRatio,
+                processor=utils.default_process,
+            )
         )
+        if score is None:
+            no_matches.append((data1, score))
+            continue
         s2 = df2.iloc[score[2]].copy()
         for column in columns:
             from_col = column["from_"]
