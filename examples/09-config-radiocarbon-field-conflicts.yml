@@ -1,0 +1,48 @@
+description: >
+  "Find radiocarbon dates that share a laboratory code but disagree on age, error, site or position
+  (AIDA and the Italian records of p3k14c). Disagreements land in the potential bucket for review.
+  See examples/radiocarbon/README.md to run it on the bundled sample."
+
+join:
+  similarity: yes
+  similarity_config:
+    merge:
+      id_columns:
+        first: "DateID"
+        second: "LabID"
+      columns:
+        - from_: "LabID"
+          into_: "LabID"
+          similarity:
+            above: 100
+            cutoff: 100
+            preprocess: yes
+          is_reference: yes
+        # No at_most on the distance scorers: a disagreement must stay in the potential
+        # bucket, because a no-match would hide it among unrelated dates.
+        - from_: "Age"
+          into_: "CRA"
+          similarity:
+            scorer: numeric
+            within: 0
+        - from_: "Error"
+          into_: "Error"
+          similarity:
+            scorer: numeric
+            within: 0
+        - from_: "SiteName"
+          into_: "SiteName"
+          similarity:
+            above: 60
+            cutoff: 0
+            preprocess: yes
+        - from_: "Lat"
+          into_: "Latitude"
+          similarity:
+            scorer: geo
+            longitude:
+              from_: "Long"
+              into_: "Longitude"
+            within: 25
+data:
+  dest: merged.xlsx

@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+import math
 import pandas as pd
 from pathlib import Path
 from rapidfuzz import fuzz, process, utils
@@ -103,6 +104,125 @@ def _without_blanks(values: pd.Series) -> pd.Series:
     return values[~values.map(_is_blank)]
 
 
+SCORERS = ("qratio", "numeric", "geo")
+EARTH_RADIUS_KM = 6371.0
+
+
+def _column_pairs(column) -> list[tuple[str, str]]:
+    """Every (from_, into_) column name pair a column entry reads, longitude included."""
+    pairs = [(column["from_"], column["into_"])]
+    longitude = column["similarity"].get("longitude")
+    if longitude:
+        pairs.append((longitude["from_"], longitude["into_"]))
+    return pairs
+
+
+def _lowercase_column_names(column) -> None:
+    column["from_"] = column["from_"].lower()
+    column["into_"] = column["into_"].lower()
+    longitude = column["similarity"].get("longitude")
+    if longitude:
+        longitude["from_"] = longitude["from_"].lower()
+        longitude["into_"] = longitude["into_"].lower()
+
+
+def validate_scorers(columns) -> None:
+    """Reject a column whose scorer settings cannot be applied, before any data is read."""
+    errors = []
+    for column in columns:
+        similarity = column["similarity"]
+        scorer = similarity.get("scorer", "qratio")
+        name = column["from_"]
+        if scorer not in SCORERS:
+            errors.append(f'Column "{name}": unknown scorer "{scorer}". Use one of {", ".join(SCORERS)}.')
+            continue
+        if scorer == "qratio":
+            continue
+        if column.get("is_reference"):
+            errors.append(f'Column "{name}": the reference column must use the qratio scorer.')
+        within, at_most = similarity.get("within"), similarity.get("at_most")
+        if isinstance(within, bool) or not isinstance(within, (int, float)) or within < 0:
+            errors.append(f'Column "{name}": a {scorer} scorer needs "within", a distance of 0 or more.')
+        elif at_most is not None and (
+            isinstance(at_most, bool) or not isinstance(at_most, (int, float)) or at_most < within
+        ):
+            errors.append(f'Column "{name}": "at_most" must be a number no smaller than "within".')
+        if scorer == "geo":
+            longitude = similarity.get("longitude")
+            if not isinstance(longitude, dict) or not {"from_", "into_"} <= longitude.keys():
+                errors.append(f'Column "{name}": a geo scorer needs "longitude" with "from_" and "into_".')
+    if errors:
+        raise ValueError("\n".join(errors))
+
+
+def _as_number(value) -> float | None:
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if math.isnan(number) else number
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Great-circle distance in kilometres between two points given in decimal degrees."""
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    h = (
+        math.sin((phi2 - phi1) / 2) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(math.radians(lon2 - lon1) / 2) ** 2
+    )
+    return 2 * EARTH_RADIUS_KM * math.asin(min(1.0, math.sqrt(h)))
+
+
+def column_distance(column, from_row, into_row) -> float | None:
+    """Distance between two records on a numeric or geo column; None if either side is blank."""
+    similarity = column["similarity"]
+    if similarity["scorer"] == "numeric":
+        a, b = _as_number(from_row[column["from_"]]), _as_number(into_row[column["into_"]])
+        return None if a is None or b is None else abs(a - b)
+    longitude = similarity["longitude"]
+    values = [
+        _as_number(v)
+        for v in (
+            from_row[column["from_"]],
+            from_row[longitude["from_"]],
+            into_row[column["into_"]],
+            into_row[longitude["into_"]],
+        )
+    ]
+    return None if None in values else haversine_km(*values)
+
+
+def distance_state(distance: float, similarity) -> "MergeState":
+    """Zero is exact, up to ``within`` suggested, up to ``at_most`` (unbounded if absent) potential."""
+    if distance == 0:
+        return MergeState.EXACT
+    if distance <= similarity["within"]:
+        return MergeState.SUGGESTED
+    at_most = similarity.get("at_most")
+    if at_most is None or distance <= at_most:
+        return MergeState.POTENTIAL
+    return MergeState.NO_MATCH
+
+
+def _column_state(column, from_row, into_row) -> "MergeState | None":
+    """How one configured column judges a candidate pair, or None if it has no value to judge."""
+    if column["similarity"].get("scorer", "qratio") != "qratio":
+        distance = column_distance(column, from_row, into_row)
+        return None if distance is None else distance_state(distance, column["similarity"])
+
+    from_value, into_value = from_row[column["from_"]], into_row[column["into_"]]
+    if pd.isna(from_value) or from_value == "nan" or pd.isna(into_value) or into_value == "nan":
+        return None
+    ratio = fuzz.QRatio(from_value, into_value, processor=utils.default_process)
+    if ratio == 100:
+        return MergeState.EXACT
+    if ratio >= column["similarity"]["above"]:
+        return MergeState.SUGGESTED
+    if ratio >= column["similarity"]["cutoff"]:
+        return MergeState.POTENTIAL
+    return MergeState.NO_MATCH
+
+
 def _preprocess_data(df1, df2, from_col, into_col, preprocess_config):
     remove = preprocess_config.get("remove", None)
     replace = preprocess_config.get("replace", None)
@@ -180,6 +300,7 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     from_columns = [col["from_"].lower() for col in columns]
     into_columns = [col["into_"].lower() for col in columns]
     assert_no_duplicate_columns(from_columns, into_columns)
+    validate_scorers(columns)
 
     if first_src is not None and second_src is not None:
         first_src = Path(first_src)
@@ -196,8 +317,7 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
     df2 = df2.rename(columns=str.lower)
 
     for column in columns:
-        column["from_"] = column["from_"].lower()
-        column["into_"] = column["into_"].lower()
+        _lowercase_column_names(column)
 
     if config.content["join"]["similarity_config"]["merge"].get("drop_duplicates"):
         df1 = df1.drop_duplicates()
@@ -270,31 +390,9 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
             continue
         s2 = df1.iloc[score[2]].copy()
         for column in columns:
-            from_col = column["from_"]
-            into_col = column["into_"]
-            similarity_above = column["similarity"]["above"]
-            similarity_cutoff = column["similarity"]["cutoff"]
-            if (
-                pd.isna(data2[from_col])
-                or data2[from_col] == "nan"
-                or pd.isna(s2[into_col])
-                or s2[into_col] == "nan"
-            ):
-                continue
-
-            ratio = fuzz.QRatio(
-                data2[from_col], s2[into_col], processor=utils.default_process
-            )
-            if ratio == 100:
-                row_states.append(MergeState.EXACT)
-                continue
-            if ratio >= similarity_above:
-                row_states.append(MergeState.SUGGESTED)
-                continue
-            if ratio >= similarity_cutoff:
-                row_states.append(MergeState.POTENTIAL)
-                continue
-            row_states.append(MergeState.NO_MATCH)
+            state = _column_state(column, data2, s2)
+            if state is not None:
+                row_states.append(state)
 
         try:
             s1 = data2
@@ -357,31 +455,9 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
             continue
         s2 = df2.iloc[score[2]].copy()
         for column in columns:
-            from_col = column["from_"]
-            into_col = column["into_"]
-            similarity_above = column["similarity"]["above"]
-            similarity_cutoff = column["similarity"]["cutoff"]
-            if (
-                pd.isna(data1[into_col])
-                or data1[into_col] == "nan"
-                or pd.isna(s2[from_col])
-                or s2[from_col] == "nan"
-            ):
-                continue
-
-            ratio = fuzz.QRatio(
-                data1[into_col], s2[from_col], processor=utils.default_process
-            )
-            if ratio == 100:
-                row_states.append(MergeState.EXACT)
-                continue
-            if ratio >= similarity_above:
-                row_states.append(MergeState.SUGGESTED)
-                continue
-            if ratio >= similarity_cutoff:
-                row_states.append(MergeState.POTENTIAL)
-                continue
-            row_states.append(MergeState.NO_MATCH)
+            state = _column_state(column, s2, data1)
+            if state is not None:
+                row_states.append(state)
 
         try:
             s1 = data1
@@ -417,7 +493,7 @@ def _merge_two_sources(first_src: Path, second_src: Path, config: Config, stage:
 
     def _to_into_schema(row: pd.Series) -> pd.Series:
         for column in columns:
-            row = row.rename({column["from_"]: column["into_"]})
+            row = row.rename(dict(_column_pairs(column)))
         return row
 
     exact_matches_series = [_to_into_schema(t[0]) for t in exact_matches]
