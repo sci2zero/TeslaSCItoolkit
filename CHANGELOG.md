@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # [Unreleased]
 
+## Added
+
+- Similarity: `numeric` and `geo` scorers for a column, which compare by absolute difference and
+  by great-circle distance in kilometres, with `within` and an optional `at_most` in place of
+  `above` and `cutoff`. See `examples/radiocarbon/README.md`.
+- Examples 08 to 10 and a radiocarbon sample, merging the AIDA and p3k14c databases.
+
 ## Fixed
 
 - pandas 3 compatibility:

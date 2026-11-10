@@ -1,0 +1,15 @@
+DateID,LabID,CRA,Error,Material,SiteName,Longitude,Latitude,LocQual,Source
+1,A-3951,3760,130,charcoal,La Muculufa,14.011918,37.216112,A,CalPal; Pacciarelli et al. 2015
+18,A-4472,4840,200,,Piano Vento,13.7094,37.2,B,CalPal; Manen and Sabatier 2003
+56,AA-64825,4476,43,bone,Cannas di Sotto,8.5322,39.1628,A,Paulsson 2017
+895,GrA-19820,6390,60,bone,Grotta dell'Edera,8.32,44.196,A,Biagi 2000
+1437,I-15466,2880,80,charcoal,Duos Nuraghes,9.0129,40.1209,A,Rubinos and Ruiz-Galvez 2003
+1878,LTL-201A,10020,65,,Cava Romita,13.2,43.0667,B,Mussi et al. 2011
+1879,LTL-201a,6261,40,,Grotta San Michele di Saracena,16.309711,39.787622,A,Tinè and Tusa 2012
+2498,Lyon-4043,2145,30,organic matter,"Ostia, Fiumicino",12.2803,41.7533,A,BANADORA
+3396,R-2702,6447,56,charcoal,"Piano di Cerreto, Piano di sotto, Pieve Fosciana",11.1833,45.6167,B,Skeates and Whitehouse 1997; Pearce 2013a
+3518,R-398,8990,90,charcoal,"Piazzana, Coreglia",10.5612,44.1098,A,Vetro and Martini 2016
+3519,R-399,8780,90,charcoal,"Piazzana, Coreglia",10.5612,44.1098,A,Vetro and Martini 2016
+3716,R-98,3975,60,wood,Isolone del Mincio,10.7911,45.1564,A,Alessio et al. 1965; Capuzzo et al. 2014; Hinz et al. 2012
+3717,R-98,3075,60,wood,Isolone del Mincio,10.7911,45.1564,A,Alessio et al. 1965; Capuzzo et al. 2014
+4302,,6910,110,charcoal,"Arene Candide, Finale Ligure",8.3283,44.1625,A,Pearce 2013a

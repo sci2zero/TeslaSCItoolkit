@@ -1,0 +1,21 @@
+description: >
+  "Link two radiocarbon databases, AIDA and the Italian records of p3k14c, on laboratory code alone.
+  See examples/radiocarbon/README.md to run it on the bundled sample."
+
+join:
+  similarity: yes
+  similarity_config:
+    merge:
+      id_columns:
+        first: "DateID"
+        second: "LabID"
+      columns:
+        - from_: "LabID"
+          into_: "LabID"
+          similarity:
+            above: 100
+            cutoff: 100
+            preprocess: yes
+          is_reference: yes
+data:
+  dest: merged.xlsx

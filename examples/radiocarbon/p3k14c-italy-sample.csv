@@ -1,0 +1,12 @@
+LabID,Age,Error,Material,SiteName,Long,Lat,LocAccuracy,Source
+A-3951,3760,130,,La Muculufa,14.18246,37.19165,3,CALPAL
+A-4472,4840,200,,Piano Vento,11.1079,42.7714,3,CALPAL
+AA-64825,4476,43,bone,Cannas di Sotto,8.5322,39.1628,3,Vermeersch2019
+GRA-19820,6390,60,bone,Grotta dell'Edera (Trieste),13.696,45.756,2,Silva_VanderLinden_2017
+L-15466,2880,80,charcoal,Duos Nuraghes,8.8082,40.2211,1,Vermeersch2019
+LTL-201A,10020,65,,Cava Romita,12.9,43.34,2,Silva_VanderLinden_2017
+LY-4043,2145,30,organic matter,Ostia Fiumicino,12.2803,41.7533,2,Palmisano2017_Italy
+R-2702,6447,56,,Pian di Cereto,12.6333,43.8667,3,CALPAL
+R-398,8780,90,,Piazzana,10.5612,44.1098,3,CALPAL
+R-399,8990,90,,Piazzana,10.5612,44.1098,3,CALPAL
+R-98,3975,60,wood,Isolone del Mincio,10.79983,45.16071,2,RADON-B
